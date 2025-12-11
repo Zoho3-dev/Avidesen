@@ -69,13 +69,49 @@ Outil Python automatisé pour extraire les manuels produits d'Avidsen et les pub
    ```
 
 4. Configurer `config.txt`
+
+   Le fichier `config.txt` centralise toutes vos informations sensibles. Voici comment obtenir chaque valeur :
+
+   #### a. Créer un "Self Client" Zoho
+
+   1.  **Connectez-vous à la console développeur Zoho** : [https://api-console.zoho.com/](https://api-console.zoho.com/)
+   2.  Cliquez sur **"Get Started"** ou **"Add Client"**.
+   3.  Choisissez **"Self Client"** comme type de client. C'est le type le plus simple pour les scripts internes.
+
+   #### b. Générer le Grant Token (Code d'autorisation)
+
+   1.  Une fois le client créé, allez dans l'onglet **"Generate Code"**.
+   2.  Entrez les **scopes** (permissions) suivants, séparés par une virgule. Ces permissions sont nécessaires pour que le script puisse lire et créer des articles dans la base de connaissances :
+       ```
+       Desk.articles.CREATE,Desk.articles.READ,Desk.articles.WRITE,Desk.settings.READ
+       ```
+   3.  Choisissez une **durée de validité** (ex: 10 minutes). Ce code est à usage unique.
+   4.  Cliquez sur **"Create"** puis copiez le `code` généré. C'est votre **`GRANTED_CODE`**.
+
+   #### c. Obtenir le Client ID et le Client Secret
+
+   1.  Allez dans l'onglet **"Client Secret"**.
+   2.  Vous y trouverez le **`Client ID`** et le **`Client Secret`**. Copiez-les.
+
+   #### d. Trouver l'ID de l'Organisation et de la Catégorie
+
+   1.  **`ZOHO_ORG_ID`** : Connectez-vous à Zoho Desk. Allez dans **Setup (⚙️) > APIs**. Votre `organizationId` est affiché ici.
+   2.  **`ZOHO_CATEGORY_ID`** : Allez dans votre base de connaissances Zoho Desk, naviguez jusqu'à la catégorie où les articles doivent être publiés, et regardez l'URL. L'ID de la catégorie s'y trouve (ex: `.../category/603196000008134001`).
+
+   #### e. Remplir le fichier
+
+   Copiez `config.example.txt` vers `config.txt` et remplissez-le avec les valeurs que vous venez de récupérer :
+
    ```ini
-   ZOHO_CLIENT_ID=votre_client_id
-   ZOHO_CLIENT_SECRET=votre_client_secret
-   GRANTED_CODE=votre_code_autorisation
-   ZOHO_ORG_ID=votre_org_id
-   ZOHO_CATEGORY_ID=votre_categorie_id
+   ZOHO_CLIENT_ID=le_client_id_obtenu
+   ZOHO_CLIENT_SECRET=le_client_secret_obtenu
+   GRANTED_CODE=le_code_généré_à_l_étape_b
+   ZOHO_ORG_ID=votre_id_d_organisation
+   ZOHO_CATEGORY_ID=votre_id_de_catégorie
+   # Laissez les autres valeurs telles quelles pour le moment
    ```
+
+   > **Important** : Le `GRANTED_CODE` est à usage unique. La première fois que vous lancerez `zoho_auth.py` ou `refresh_access_token.py`, il sera échangé contre un `refresh_token` qui, lui, sera stocké et réutilisé durablement.
 
 ### Utilisation
 ```bash
