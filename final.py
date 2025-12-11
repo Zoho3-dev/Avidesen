@@ -13,10 +13,31 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 OUTPUT_FOLDER = Path("notices")
 OUTPUT_FOLDER.mkdir(exist_ok=True)
 
-# Zoho Desk
-ACCESS_TOKEN_ZOHO = "1000.cdff96079b8adcc4ad2a2c3cd9d0b857.927bed022ce9a47f88257e28e165e3df"
-ZOHO_ORG_ID = "749234015"
-ZOHO_CATEGORY_ID = "603196000008134001"
+# ---------------- Utilities ----------------
+def load_config():
+    """Charge la configuration depuis config.txt"""
+    config = {}
+    try:
+        with open('config.txt', 'r', encoding='utf-8') as f:
+            for line in f:
+                if '=' in line:
+                    key, value = line.strip().split('=', 1)
+                    config[key.strip()] = value.strip().strip('"\'')
+    except FileNotFoundError:
+        print("Erreur : Le fichier config.txt est introuvable.")
+        print("Veuillez créer un fichier config.txt sur la base de config.example.txt")
+        exit(1)
+    return config
+
+# Load config
+config = load_config()
+ACCESS_TOKEN_ZOHO = config.get("ZOHO_ACCESS_TOKEN")
+ZOHO_ORG_ID = config.get("ZOHO_ORG_ID")
+ZOHO_CATEGORY_ID = config.get("ZOHO_CATEGORY_ID")
+
+if not all([ACCESS_TOKEN_ZOHO, ZOHO_ORG_ID, ZOHO_CATEGORY_ID]):
+    print("Erreur: Des variables de configuration Zoho sont manquantes dans config.txt")
+    exit(1)
 
 # PDF footer ignore threshold (bottom fraction of page to ignore)
 FOOTER_BOTTOM_FRAC = 0.15
@@ -25,7 +46,6 @@ FOOTER_BOTTOM_FRAC = 0.15
 Y_TOLERANCE = 3  # pixels tolerance for grouping same row
 X_GAP_TOLERANCE = 8  # allowed small gaps
 
-# ---------------- Utilities ----------------
 def download_file(url, filename):
     """Download file to filename (streamed)."""
     r = requests.get(url, stream=True, headers=HEADERS, timeout=60)
