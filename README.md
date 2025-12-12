@@ -24,15 +24,35 @@ Outil Python automatisé pour extraire les manuels produits d'Avidsen et les pub
 
 ## 🏗 Architecture
 
-### Structure du projet
+### Structure du projet (Nouvelle architecture modulaire)
 ```
 .
-├── final.py           # Point d'entrée principal
-├── zoho_api.py        # Gestion des appels API Zoho
-├── zoho_auth.py       # Authentification OAuth 2.0
-├── config.txt         # Configuration (à sécuriser)
-├── requirements.txt   # Dépendances
-└── notices/           # Stockage des PDF et images
+├── src/
+│   ├── config/
+│   │   ├── __init__.py
+│   │   └── settings.py        # Configuration centralisée
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── file_utils.py      # Téléchargement de fichiers
+│   │   └── text_utils.py      # Manipulation de texte
+│   ├── scraper/
+│   │   ├── __init__.py
+│   │   ├── web_scraper.py     # Scraping et pagination
+│   │   └── product_parser.py  # Traitement des pages produits
+│   ├── pdf/
+│   │   ├── __init__.py
+│   │   ├── pdf_parser.py      # Extraction de structure PDF
+│   │   └── table_detector.py  # Détection de tableaux
+│   └── zoho/
+│       ├── __init__.py
+│       ├── auth.py            # Authentification OAuth 2.0
+│       └── api.py             # Gestion des appels API Zoho
+├── main.py                    # Point d'entrée principal
+├── refresh_token.py           # Script de rafraîchissement du token
+├── config.txt                 # Configuration (à sécuriser)
+├── requirements.txt           # Dépendances
+├── REFRESH_TOKEN_GUIDE.md     # Guide de rafraîchissement du token
+└── notices/                   # Stockage des PDF et images
 ```
 
 ### Flux de travail
@@ -114,15 +134,51 @@ Outil Python automatisé pour extraire les manuels produits d'Avidsen et les pub
    > **Important** : Le `GRANTED_CODE` est à usage unique. La première fois que vous lancerez `zoho_auth.py` ou `refresh_access_token.py`, il sera échangé contre un `refresh_token` qui, lui, sera stocké et réutilisé durablement.
 
 ### Utilisation
-```bash
-# Traiter un PDF spécifique
-python final.py --pdf chemin/vers/notice.pdf
 
-# Traiter un dossier complet
-python final.py --folder chemin/vers/dossier
+#### Lancer le scraping complet
+```bash
+# Nouvelle méthode (recommandée)
+python main.py
+
+# Ancienne méthode (toujours fonctionnelle)
+python final.py
 ```
 
+#### Rafraîchir le token Zoho
+```bash
+# Rafraîchir manuellement le token d'accès
+python refresh_token.py
+```
+
+> **Note** : Le token est automatiquement rafraîchi lors de l'exécution de `main.py`, mais vous pouvez utiliser `refresh_token.py` pour le faire manuellement.
+
+Pour plus de détails sur la gestion des tokens, consultez [REFRESH_TOKEN_GUIDE.md](REFRESH_TOKEN_GUIDE.md).
+
+## 🎨 Architecture Modulaire
+
+### Avantages de la nouvelle structure
+
+✅ **Séparation des préoccupations** : Chaque module a une responsabilité claire
+✅ **Maintenabilité** : Plus facile de trouver et modifier du code spécifique
+✅ **Réutilisabilité** : Les modules peuvent être importés et réutilisés
+✅ **Testabilité** : Chaque module peut être testé indépendamment
+✅ **Lisibilité** : Structure claire et intuitive
+✅ **Évolutivité** : Facile d'ajouter de nouvelles fonctionnalités
+
+### Modules principaux
+
+- **config** : Gestion centralisée de la configuration
+- **utils** : Fonctions utilitaires (fichiers, texte)
+- **scraper** : Scraping du site web et parsing des produits
+- **pdf** : Extraction et traitement des PDFs
+- **zoho** : Authentification et API Zoho Desk
+
 ## 📈 Améliorations prévues
+
+### ✅ Complété
+- [x] Refactorisation du code en architecture modulaire
+- [x] Script de rafraîchissement de token
+- [x] Documentation complète
 
 ### Priorité haute 🚨
 - [ ] Extraction des images PDF
