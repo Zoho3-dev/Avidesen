@@ -9,17 +9,19 @@ import re
 
 from src.config.settings import get_zoho_config
 from src.utils.text_utils import clean_title, sanitize_permalink, clean_section_text
+from src.scraper.tutorial_formatter import format_tutorials_section, create_tutorial_summary
 
 
-def create_zoho_article(title_raw: str, main_image_path_or_url: str, sections, pdf_url: str):
+def create_zoho_article(title_raw: str, main_image_path_or_url: str, sections, pdf_url: str, tutorials=None):
     """
-    Crée un article dans Zoho Desk avec le contenu extrait du PDF.
+    Crée un article dans Zoho Desk avec le contenu extrait du PDF et les tutoriels.
     
     Args:
         title_raw: Titre brut du produit
         main_image_path_or_url: Chemin ou URL de l'image principale
         sections: Liste de sections extraites du PDF
         pdf_url: URL du PDF original
+        tutorials: Liste de tutoriels associés au produit (optionnel)
     """
     if not pdf_url:
         print(f"PDF manquant, l'article '{title_raw}' ne sera pas créé.")
@@ -37,6 +39,12 @@ def create_zoho_article(title_raw: str, main_image_path_or_url: str, sections, p
         html.append(f"<div style='text-align:center;'><img src='{img_src}' alt='{title}' style='display:block; margin:12px auto; max-width:800px; border:1px solid #ddd; padding:5px;'/></div>")
 
     html.append(f"<h1 style='text-align:center; color:#2E86C1; margin-top:10px;'>{title}</h1>")
+    
+    # Add tutorial summary if tutorials exist
+    if tutorials:
+        tutorial_summary = create_tutorial_summary(tutorials)
+        if tutorial_summary:
+            html.append(tutorial_summary)
 
     for sec in sections:
         sec_title = sec.get("title", "")
@@ -57,6 +65,12 @@ def create_zoho_article(title_raw: str, main_image_path_or_url: str, sections, p
                 cleaned = clean_section_text(sec_content)
                 if cleaned:
                     html.append(cleaned)
+    
+    # Add full tutorials section
+    if tutorials:
+        tutorials_html = format_tutorials_section(tutorials)
+        if tutorials_html:
+            html.append(tutorials_html)
 
     if pdf_url:
         html.append(f"""

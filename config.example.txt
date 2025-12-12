@@ -1,61 +1,22 @@
-# =============================================
-# FICHIER DE CONFIGURATION - EXEMPLE
-# =============================================
-# Copiez ce fichier en tant que 'config.txt' et remplacez les valeurs par les vôtres.
-# NE COMMITTEZ JAMAIS le fichier config.txt avec vos identifiants réels.
+# Configuration Zoho Desk
 
-# =============================================
-# 1. CONFIGURATION ZOHO DESK
-# =============================================
+# Identifiants API
+ZOHO_CLIENT_ID=votre_client_id
+ZOHO_CLIENT_SECRET=votre_client_secret
+GRANTED_CODE=votre_granted_code
 
-# Identifiants OAuth 2.0 - À obtenir depuis le portail développeur Zoho
-ZOHO_CLIENT_ID=1000.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-ZOHO_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Organisation et Catégories
+ZOHO_ORG_ID=votre_org_id
 
-# Code d'autorisation (à usage unique)
-GRANTED_CODE=1000.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Catégorie pour les PRODUITS (notices PDF)
+ZOHO_CATEGORY_ID=votre_category_id_produits
 
-# URL de base de l'API Zoho Desk
-ZOHO_API_BASE=https://desk.zoho.com/api/v1
+# Catégorie pour les TUTORIELS (optionnel)
+# Si non défini, les tutoriels iront dans la même catégorie que les produits
+ZOHO_TUTORIAL_CATEGORY_ID=603196000009391009
 
-# ID de l'organisation Zoho (à trouver dans les paramètres de l'admin)
-ZOHO_ORG_ID=000000000
-
-# ID de la catégorie de la base de connaissances
-ZOHO_CATEGORY_ID=0000000000000000000
-
-# =============================================
-# 2. TOKENS D'ACCÈS (générés automatiquement)
-# =============================================
-# Ces valeurs sont automatiquement mises à jour par l'application.
-# Il n'est pas nécessaire de les modifier manuellement.
-
-# Jeton d'accès actuel (expire après ACCESS_TOKEN_EXPIRES_IN secondes)
-ZOHO_ACCESS_TOKEN=1000.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Durée de validité du token en secondes (1h par défaut)
-ACCESS_TOKEN_EXPIRES_IN=3600
-
-# Horodatage de la dernière génération du token
-ACCESS_TOKEN_TIMESTAMP=0000000000.000000
-
-# Jeton de rafraîchissement (utilisé pour obtenir un nouveau token d'accès)
-ZOHO_REFRESH_TOKEN=1000.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# =============================================
-# 3. CLÉS API TIERCES
-# =============================================
-
-# Clé API FreeConvert (pour la conversion de fichiers si nécessaire)
-API_KEY_FREECONVERT=api_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# Clé API OpenAI (si utilisé pour le traitement de texte)
-OPEN_AI=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# =============================================
-# NOTES IMPORTANTES :
-# =============================================
-# 1. Ne partagez jamais ce fichier avec des informations réelles
-# 2. Ajoutez 'config.txt' à votre .gitignore
-# 3. Régénérez les tokens si vous pensez qu'ils ont été compromis
-# 4. Consultez la documentation pour obtenir les identifiants nécessaires
+# Tokens (générés automatiquement)
+# ZOHO_ACCESS_TOKEN=
+# ZOHO_REFRESH_TOKEN=
+# ACCESS_TOKEN_EXPIRES_IN=
+# ACCESS_TOKEN_TAMESTAMP=

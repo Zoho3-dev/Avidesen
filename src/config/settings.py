@@ -64,3 +64,22 @@ def get_zoho_config():
         "org_id": org_id,
         "category_id": category_id
     }
+
+
+def get_zoho_tutorial_category_id():
+    """
+    Récupère l'ID de la catégorie Zoho pour les tutoriels.
+    Si ZOHO_TUTORIAL_CATEGORY_ID n'existe pas, utilise ZOHO_CATEGORY_ID.
+    
+    Returns:
+        ID de la catégorie pour les tutoriels
+    """
+    config = load_config()
+    tutorial_category_id = config.get("ZOHO_TUTORIAL_CATEGORY_ID")
+    
+    if tutorial_category_id:
+        return tutorial_category_id
+    
+    # Fallback sur la catégorie principale
+    return config.get("ZOHO_CATEGORY_ID", "603196000009391009")
+
