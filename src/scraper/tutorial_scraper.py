@@ -109,14 +109,14 @@ def get_product_tutorials(product_ref: str, categories: List[str] = None) -> Lis
 
 def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
     """
-    Extrait le contenu complet d'un tutoriel EN PRÉSERVANT LE HTML ORIGINAL.
-    Supprime les menus, headers, footers pour garder uniquement le contenu du tutoriel.
+    Extrait le contenu d'un tutoriel Avidsen.
+    Approche ultra-simple: prendre tout le body, nettoyer navigation.
     
     Args:
         tutorial_url: URL du tutoriel
         
     Returns:
-        Dictionnaire contenant le contenu du tutoriel avec HTML original nettoyé
+        Dictionnaire contenant le contenu du tutoriel
     """
     try:
         response = requests.get(tutorial_url, headers=HEADERS, timeout=20)
@@ -124,103 +124,91 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
         
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Extraire le titre
+        # 1. Titre
         title_elem = soup.find('h1')
         title = title_elem.get_text(strip=True) if title_elem else "Tutoriel"
         
-        # Extraire les produits applicables
-        applicable_products = []
-        applicable_section = soup.find(string=re.compile(r'Ce tutoriel est applicable pour'))
-        if applicable_section:
-            parent = applicable_section.find_parent()
-            if parent:
-                product_links = parent.find_all('a', href=re.compile(r'/ref/\d+'))
-                for link in product_links:
-                    ref_match = re.search(r'/ref/(\d+)', link.get('href', ''))
-                    if ref_match:
-                        applicable_products.append(ref_match.group(1))
+        # 2. APPROCHE SIMPLE: Prendre le body entier
+        body = soup.find('body')
+        if not body:
+            print(f"[ERROR] Pas de body trouvé pour {tutorial_url}")
+            return None
         
-        # EXTRACTION PROPRE DU CONTENU PRINCIPAL
-        # Supprimer tous les éléments de navigation et inutiles
-        elements_to_remove = [
-            'header', 'nav', 'footer',
-            {'name': 'div', 'class': re.compile(r'header|navigation|nav|menu|footer|sidebar|cookie|banner', re.I)},
-            {'name': 'div', 'id': re.compile(r'header|navigation|nav|menu|footer|sidebar|cookie|banner', re.I)},
-            {'name': 'a', 'class': re.compile(r'skip|logo', re.I)},
-            'script', 'style', 'noscript'
-        ]
+        # 3. Supprimer SEULEMENT les éléments de navigation évidents
+        # (garder tout le contenu)
+        for tag in body.find_all(['nav', 'header', 'footer']):
+            tag.decompose()
         
-        for element in elements_to_remove:
-            if isinstance(element, dict):
-                for tag in soup.find_all(**element):
-                    tag.decompose()
-            else:
-                for tag in soup.find_all(element):
-                    tag.decompose()
+        for tag in body.find_all('script'):
+            tag.decompose()
         
-        # Chercher le conteneur principal du tutoriel
-        # Essayer plusieurs sélecteurs pour trouver le contenu
-        main_content = None
+        for tag in body.find_all('style'):
+            tag.decompose()
         
-        # Essayer de trouver le conteneur principal
-        selectors = [
-            ('main', {}),
-            ('article', {}),
-            ('div', {'class': re.compile(r'content|tutorial|main|article', re.I)}),
-            ('div', {'id': re.compile(r'content|tutorial|main|article', re.I)}),
-        ]
-        
-        for tag, attrs in selectors:
-            main_content = soup.find(tag, attrs)
-            if main_content:
-                break
-        
-        # Si aucun conteneur trouvé, prendre le body
-        if not main_content:
-            main_content = soup.find('body')
-        
-        if main_content:
-            # Supprimer encore les éléments indésirables dans le contenu
-            for element in elements_to_remove:
-                if isinstance(element, dict):
-                    for tag in main_content.find_all(**element):
-                        tag.decompose()
-                else:
-                    for tag in main_content.find_all(element):
-                        tag.decompose()
+        # Supprimer les divs de menu/navigation par classe
+        for tag in body.find_all('div', class_=re.compile(r'menu|navigation|nav-', re.I)):
+            tag.decompose()
             
-            # Convertir les URLs relatives en absolues pour les images
-            for img in main_content.find_all('img'):
-                # Gérer src et data-src
-                for attr in ['src', 'data-src', 'srcset']:
-                    src = img.get(attr)
-                    if src and src.startswith('/'):
-                        img[attr] = f"https://www.avidsen.com{src}"
+        # Supprimer les iframes/embeds qui pourraient poser problème (optionnel, mais souvent mieux pour KB)
+        # On garde les iframes Youtube si besoin, mais ici on veut surtout nettoyer
+        # for tag in body.find_all('iframe'):
+        #     tag.decompose() 
+        
+        # 4. FIX TOUTES LES IMAGES (Critique pour lazy loading)
+        for img in body.find_all('img'):
+            # Chercher l'URL réelle (lazy loading)
+            # Priorité: data-lazy-src > data-src > data-original > src
+            real_url = (img.get('data-lazy-src') or 
+                       img.get('data-src') or 
+                       img.get('data-original') or 
+                       img.get('src'))
             
-            # Convertir les liens relatifs en absolus
-            for link in main_content.find_all('a'):
-                href = link.get('href')
-                if href and href.startswith('/'):
-                    link['href'] = f"https://www.avidsen.com{href}"
+            if real_url:
+                # Rendre absolu
+                if real_url.startswith('/'):
+                    real_url = f"https://www.avidsen.com{real_url}"
+                img['src'] = real_url
             
-            # Extraire le HTML nettoyé
-            html_content = str(main_content)
-        else:
-            # Fallback
-            html_content = "<p>Contenu non disponible</p>"
+            # Supprimer attributs lazy loading qui peuvent confliter
+            for attr in ['data-lazy-src', 'data-src', 'data-original', 'srcset', 'data-srcset', 'loading', 'sizes', 'data-lazy-srcset']:
+                if img.get(attr):
+                    del img[attr]
+            
+            # Style inline pour s'assurer que l'image est visible et centrée
+            img['style'] = 'max-width: 100%; height: auto; display: block; margin: 20px auto;'
+        
+        # 5. Fix liens
+        for link in body.find_all('a'):
+            href = link.get('href')
+            if href and href.startswith('/'):
+                link['href'] = f"https://www.avidsen.com{href}"
+            link['style'] = 'color: #2E86C1;'
+        
+        # 6. Styles pour headings
+        for h3 in body.find_all('h3'):
+            h3['style'] = 'color: #2E86C1; font-size: 1.25em; margin: 1.5em 0 0.5em 0; font-weight: 600;'
+        
+        for h2 in body.find_all('h2'):
+            h2['style'] = 'color: #2E86C1; font-size: 1.5em; margin: 1.5em 0 0.5em 0; font-weight: 600;'
+        
+        # 7. Paragraphes
+        for p in body.find_all('p'):
+            p['style'] = 'margin: 1em 0; line-height: 1.6;'
+        
+        # 8. Extraire HTML
+        html_content = str(body)
         
         tutorial_data = {
             'url': tutorial_url,
             'title': title,
-            'applicable_products': applicable_products,
-            'html_content': html_content,  # HTML original préservé et nettoyé
-            'steps': []  # Vide pour compatibilité
+            'html_content': html_content,
+            'steps': []  # Compatibilité
         }
         
-        print(f"[OK] Tutoriel extrait : {title} (HTML nettoyé et préservé)")
+        print(f"[OK] Tutoriel extrait : {title} (Version Body Clean)")
         return tutorial_data
         
     except Exception as e:
-        print(f"[ERROR] Erreur lors de l'extraction du tutoriel {tutorial_url}: {e}")
+        print(f"[ERROR] Erreur extraction {tutorial_url}: {e}")
         return None
 
