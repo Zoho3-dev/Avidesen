@@ -53,16 +53,16 @@ def get_zoho_config():
     config = load_config()
     access_token = config.get("ZOHO_ACCESS_TOKEN")
     org_id = config.get("ZOHO_ORG_ID")
-    category_id = config.get("ZOHO_CATEGORY_ID")
+    product_category_id = config.get("ZOHO_PRODUCT_CATEGORY_ID")
     
-    if not all([access_token, org_id, category_id]):
-        print("Erreur: Des variables de configuration Zoho sont manquantes dans config.txt")
+    if not all([access_token, org_id]):
+        print("Erreur: Des variables de configuration Zoho (Token/OrgID) sont manquantes dans config.txt")
         exit(1)
     
     return {
         "access_token": access_token,
         "org_id": org_id,
-        "category_id": category_id
+        "product_category_id": product_category_id
     }
 
 
@@ -81,5 +81,5 @@ def get_zoho_tutorial_category_id():
         return tutorial_category_id
     
     # Fallback sur la catégorie principale
-    return config.get("ZOHO_CATEGORY_ID", "603196000009391009")
+    return config.get("ZOHO_PRODUCT_CATEGORY_ID", "603196000009391009")
 

@@ -116,7 +116,7 @@ ZOHO_CLIENT_SECRET=votre_client_secret
 ZOHO_ORG_ID=votre_org_id
 
 # Catégorie pour les PRODUITS
-ZOHO_CATEGORY_ID=votre_category_id_produits
+ZOHO_PRODUCT_CATEGORY_ID=votre_category_id_produits
 
 # Catégorie pour les TUTORIELS
 ZOHO_TUTORIAL_CATEGORY_ID=603196000009391009

@@ -24,7 +24,7 @@ GRANTED_CODE=votre_granted_code
 ZOHO_ORG_ID=votre_org_id
 
 # Catégorie pour les PRODUITS (notices PDF)
-ZOHO_CATEGORY_ID=votre_category_id_produits
+ZOHO_PRODUCT_CATEGORY_ID=votre_category_id_produits
 
 # Catégorie pour les TUTORIELS
 ZOHO_TUTORIAL_CATEGORY_ID=603196000009391009
@@ -36,7 +36,7 @@ ZOHO_REFRESH_TOKEN=...
 
 ## Résultat
 
-- **Produits** (via `python main.py`) → Catégorie définie par `ZOHO_CATEGORY_ID`
+- **Produits** (via `python main.py`) → Catégorie définie par `ZOHO_PRODUCT_CATEGORY_ID`
 - **Tutoriels** (via `python scrape_tutorials.py`) → Catégorie "Tutoriels" (603196000009391009)
 
 ## Vérification

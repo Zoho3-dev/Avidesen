@@ -92,7 +92,7 @@ def create_zoho_article(title_raw: str, main_image_path_or_url: str, sections, p
         "title": title,
         "permalink": sanitize_permalink(title),
         "answer": final_html,
-        "categoryId": zoho_config['category_id'],
+        "categoryId": zoho_config.get('product_category_id'),
         "status": "Published"
     }
 

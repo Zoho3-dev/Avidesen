@@ -9,7 +9,7 @@ GRANTED_CODE=votre_granted_code
 ZOHO_ORG_ID=votre_org_id
 
 # Catégorie pour les PRODUITS (notices PDF)
-ZOHO_CATEGORY_ID=votre_category_id_produits
+ZOHO_PRODUCT_CATEGORY_ID=votre_category_id_produits
 
 # Catégorie pour les TUTORIELS (optionnel)
 # Si non défini, les tutoriels iront dans la même catégorie que les produits

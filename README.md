@@ -116,7 +116,7 @@ Outil Python automatisé pour extraire les manuels produits d'Avidsen et les pub
    #### d. Trouver l'ID de l'Organisation et de la Catégorie
 
    1.  **`ZOHO_ORG_ID`** : Connectez-vous à Zoho Desk. Allez dans **Setup (⚙️) > APIs**. Votre `organizationId` est affiché ici.
-   2.  **`ZOHO_CATEGORY_ID`** : Allez dans votre base de connaissances Zoho Desk, naviguez jusqu'à la catégorie où les articles doivent être publiés, et regardez l'URL. L'ID de la catégorie s'y trouve (ex: `.../category/603196000008134001`).
+   2.  **`ZOHO_PRODUCT_CATEGORY_ID`** : Allez dans votre base de connaissances Zoho Desk, naviguez jusqu'à la catégorie où les articles doivent être publiés, et regardez l'URL. L'ID de la catégorie s'y trouve (ex: `.../category/603196000008134001`).
 
    #### e. Remplir le fichier
 
@@ -127,7 +127,7 @@ Outil Python automatisé pour extraire les manuels produits d'Avidsen et les pub
    ZOHO_CLIENT_SECRET=le_client_secret_obtenu
    GRANTED_CODE=le_code_généré_à_l_étape_b
    ZOHO_ORG_ID=votre_id_d_organisation
-   ZOHO_CATEGORY_ID=votre_id_de_catégorie
+   ZOHO_PRODUCT_CATEGORY_ID=votre_id_de_catégorie
    # Laissez les autres valeurs telles quelles pour le moment
    ```
 
