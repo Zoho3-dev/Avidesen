@@ -174,8 +174,15 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                 if img.get(attr):
                     del img[attr]
             
-            # Style inline pour s'assurer que l'image est visible et centrée
-            img['style'] = 'max-width: 100%; height: auto; display: block; margin: 20px auto;'
+            # Style inline minimal pour responsive sans casser le layout original
+            # On n'écrase plus le style existant, on ajoute juste max-width
+            current_style = img.get('style', '')
+            new_style = 'max-width: 100%; height: auto;'
+            
+            if current_style:
+                img['style'] = f"{current_style}; {new_style}"
+            else:
+                img['style'] = new_style
         
         # 5. Fix liens
         for link in body.find_all('a'):
