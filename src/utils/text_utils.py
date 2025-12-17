@@ -62,6 +62,10 @@ def sanitize_permalink(title: str, max_length=100) -> str:
     Returns:
         Permalink valide
     """
+    if not title or not title.strip():
+        import time
+        return f"article-{int(time.time())}"
+    
     # Normaliser accents
     title = unicodedata.normalize('NFKD', title)
     title = title.encode('ascii', 'ignore').decode('ascii')
@@ -76,8 +80,8 @@ def sanitize_permalink(title: str, max_length=100) -> str:
     # Limiter longueur
     if len(title) > max_length:
         title = title[:max_length].rstrip('-')
-    # fallback si vide
-    if not title:
+    # fallback si vide ou trop court
+    if not title or len(title) < 3:
         import time
         title = f"article-{int(time.time())}"
     return title
