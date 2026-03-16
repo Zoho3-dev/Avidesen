@@ -1,6 +1,2 @@
-PyMuPDF
-Pillow
 requests
-python-dotenv
-tqdm
-bs4
+beautifulsoup4

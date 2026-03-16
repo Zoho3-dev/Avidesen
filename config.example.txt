@@ -5,17 +5,13 @@ ZOHO_CLIENT_ID=votre_client_id
 ZOHO_CLIENT_SECRET=votre_client_secret
 GRANTED_CODE=votre_granted_code
 
-# Organisation et Catégories
+# Organisation
 ZOHO_ORG_ID=votre_org_id
 
-# Catégorie pour les PRODUITS (notices PDF)
-ZOHO_PRODUCT_CATEGORY_ID=votre_category_id_produits
+# Categorie pour les tutoriels
+ZOHO_TUTORIAL_CATEGORY_ID=votre_category_id_tutoriels
 
-# Catégorie pour les TUTORIELS (optionnel)
-# Si non défini, les tutoriels iront dans la même catégorie que les produits
-ZOHO_TUTORIAL_CATEGORY_ID=603196000009391009
-
-# Tokens (générés automatiquement)
+# Tokens (generes automatiquement)
 # ZOHO_ACCESS_TOKEN=
 # ZOHO_REFRESH_TOKEN=
 # ACCESS_TOKEN_EXPIRES_IN=

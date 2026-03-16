@@ -86,7 +86,7 @@ class ZohoAuth:
             "code": self.granted_code
         }
 
-        response = requests.post("https://accounts.zoho.com/oauth/v2/token", data=data)
+        response = requests.post("https://accounts.zoho.eu/oauth/v2/token", data=data)
         token_data = response.json()
 
         if response.status_code == 200 and "access_token" in token_data:
@@ -127,7 +127,7 @@ class ZohoAuth:
             "refresh_token": self.refresh_token
         }
 
-        response = requests.post("https://accounts.zoho.com/oauth/v2/token", data=data)
+        response = requests.post("https://accounts.zoho.eu/oauth/v2/token", data=data)
         token_data = response.json()
 
         if response.status_code == 200 and "access_token" in token_data:
