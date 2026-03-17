@@ -44,18 +44,20 @@ def save_config(config):
 
 def get_zoho_config():
     """
-    Charge et valide la configuration Zoho.
+    Charge et valide la configuration Zoho avec rafraîchissement automatique du token.
 
     Returns:
         Dictionnaire contenant access_token et org_id.
     """
     config = load_config()
-    access_token = config.get("ZOHO_ACCESS_TOKEN")
     org_id = config.get("ZOHO_ORG_ID")
 
-    if not all([access_token, org_id]):
-        print("Erreur : ZOHO_ACCESS_TOKEN ou ZOHO_ORG_ID manquant dans config.txt")
+    if not org_id:
+        print("Erreur : ZOHO_ORG_ID manquant dans config.txt")
         exit(1)
+
+    # Obtenir un token valide (rafraîchissement automatique si expiré)
+    access_token = get_valid_access_token()
 
     return {
         "access_token": access_token,
@@ -78,4 +80,23 @@ def get_zoho_tutorial_category_id():
         exit(1)
 
     return category_id
+
+
+def get_valid_access_token():
+    """
+    Obtient un access token valide, en le rafraîchissant automatiquement si expiré.
+
+    Returns:
+        Access token valide.
+    """
+    from src.zoho.auth import ZohoAuth
+
+    auth = ZohoAuth()
+    token = auth.get_valid_access_token()
+
+    if not token:
+        print("[ERROR] Impossible d'obtenir un token valide.")
+        exit(1)
+
+    return token
 

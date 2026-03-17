@@ -8,161 +8,120 @@ import requests
 
 from src.config.settings import load_config, save_config
 
+ZOHO_TOKEN_URL = "https://accounts.zoho.com/oauth/v2/token"
+
 
 class ZohoAuth:
     """Gère l'authentification OAuth avec Zoho."""
-    
-    def __init__(self, client_id, client_secret, granted_code):
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.granted_code = granted_code
-        self.access_token = None
-      
-        # Charger les variables depuis config.txt
+
+    def __init__(self):
         config = load_config()
-        self.refresh_token = config.get("ZOHO_REFRESH_TOKEN")  # Récupérer le refresh_token
+        self.client_id = config.get("ZOHO_CLIENT_ID", "")
+        self.client_secret = config.get("ZOHO_CLIENT_SECRET", "")
+        self.granted_code = config.get("GRANTED_CODE", "")
+        self.refresh_token = config.get("ZOHO_REFRESH_TOKEN")
+        self.access_token = config.get("ZOHO_ACCESS_TOKEN")
         self.expires_in = config.get("ACCESS_TOKEN_EXPIRES_IN")
         self.token_timestamp = config.get("ACCESS_TOKEN_TAMESTAMP")
-        self.access_token = config.get("ZOHO_ACCESS_TOKEN")
 
-    def save_access_token(self, access_token):
-        """Enregistrer l'access_token dans le fichier config.txt"""
-        if access_token:
-            config = load_config()
-            config["ZOHO_ACCESS_TOKEN"] = access_token
-            save_config(config)
-            self.access_token = access_token
-            print("Access token enregistré avec succès.")
-
-    def save_expire_access_token(self, expires_in):
-        """Enregistrer la durée d'expiration"""
-        if expires_in:
-            config = load_config()
-            config["ACCESS_TOKEN_EXPIRES_IN"] = expires_in
-            save_config(config)
-            self.expires_in = expires_in
-
-    def save_access_token_timestamp(self, token_timestamp):
-        """Enregistrer la date de génération du token"""
-        if token_timestamp:
-            config = load_config()
-            config["ACCESS_TOKEN_TAMESTAMP"] = token_timestamp
-            save_config(config)
-            self.token_timestamp = token_timestamp
-
-    def save_refresh_token(self, refresh_token):
-        """Enregistrer le refresh_token dans le fichier config.txt"""
-        if refresh_token:
-            config = load_config()
-            config["ZOHO_REFRESH_TOKEN"] = refresh_token
-            save_config(config)
-            self.refresh_token = refresh_token
-            print("Refresh token enregistré avec succès.")
-
-    def delete_refresh_token(self):
-        """Supprimer le refresh_token du fichier config.txt uniquement s'il existe"""
+    def _save_token_data(self, access_token, expires_in, refresh_token=None):
+        """Sauvegarde toutes les données du token en une seule écriture."""
         config = load_config()
-        if "ZOHO_REFRESH_TOKEN" in config:
-            del config["ZOHO_REFRESH_TOKEN"]
-            save_config(config)
-            self.refresh_token = None
-            print("ZOHO_REFRESH_TOKEN supprimé du fichier config.txt !")
+        config["ZOHO_ACCESS_TOKEN"] = access_token
+        config["ACCESS_TOKEN_EXPIRES_IN"] = str(expires_in)
+        config["ACCESS_TOKEN_TAMESTAMP"] = str(time.time())
+        if refresh_token:
+            config["ZOHO_REFRESH_TOKEN"] = refresh_token
+        save_config(config)
+
+        self.access_token = access_token
+        self.expires_in = expires_in
+        self.token_timestamp = time.time()
+        if refresh_token:
+            self.refresh_token = refresh_token
+
+    def _is_token_valid(self) -> bool:
+        """Vérifie si le token actuel est encore valide (avec 5 min de marge)."""
+        if not self.access_token or not self.token_timestamp or not self.expires_in:
+            return False
+        try:
+            elapsed = time.time() - float(self.token_timestamp)
+            return elapsed < float(self.expires_in) - 300
+        except (ValueError, TypeError):
+            return False
 
     def get_access_token(self):
-        """Obtenir un nouvel access token et un refresh token avec le granted_code"""
+        """Obtenir un nouvel access token avec le granted_code."""
         if self.refresh_token:
-            print("Un refresh_token existe déjà, essayons de rafraîchir le token...")
             return self.refresh_access_token()
 
         if not self.granted_code:
-            print("Aucun granted_code disponible !")
+            print("[ERROR] Aucun granted_code disponible !")
             return None
 
-        # Demande un nouvel access_token avec le granted code
         data = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "grant_type": "authorization_code",
-            "code": self.granted_code
+            "code": self.granted_code,
         }
 
-        response = requests.post("https://accounts.zoho.com/oauth/v2/token", data=data)
+        response = requests.post(ZOHO_TOKEN_URL, data=data)
         token_data = response.json()
 
         if response.status_code == 200 and "access_token" in token_data:
-            self.access_token = token_data["access_token"]
-            self.expires_in = token_data["expires_in"]
-            self.token_timestamp = time.time()
-
-            self.save_access_token(self.access_token)
-            self.save_expire_access_token(self.expires_in)
-            self.save_access_token_timestamp(self.token_timestamp)
-
-            if "refresh_token" in token_data:
-                self.refresh_token = token_data["refresh_token"]
-                self.save_refresh_token(self.refresh_token)
-                print("Nouveau Refresh Token reçu et enregistré.")
-            else:
-                print("ATTENTION : Aucun refresh_token renvoyé !")
-                self.delete_refresh_token()  # Supprimer si pas de refresh_token
-
-            print("Access token généré avec succès !")
+            self._save_token_data(
+                token_data["access_token"],
+                token_data["expires_in"],
+                token_data.get("refresh_token"),
+            )
+            print("[OK] Access token généré avec succès.")
             return self.access_token
-        else:
-            print("Erreur lors de la récupération du token :", token_data)
-            return None
+
+        print(f"[ERROR] Récupération du token : {token_data}")
+        return None
 
     def refresh_access_token(self):
-        """Rafraîchir l'access token à l'aide du refresh token"""
+        """Rafraîchir l'access token à l'aide du refresh token."""
         if not self.refresh_token:
-            print("Aucun refresh_token disponible pour rafraîchir le token.")
+            print("[ERROR] Aucun refresh_token disponible.")
             return None
 
-        print("Rafraîchissement du access token en cours...")
+        print("[INFO] Rafraîchissement du token...")
 
         data = {
             "client_id": self.client_id,
             "client_secret": self.client_secret,
             "grant_type": "refresh_token",
-            "refresh_token": self.refresh_token
+            "refresh_token": self.refresh_token,
         }
 
-        response = requests.post("https://accounts.zoho.com/oauth/v2/token", data=data)
+        response = requests.post(ZOHO_TOKEN_URL, data=data)
         token_data = response.json()
 
         if response.status_code == 200 and "access_token" in token_data:
-            self.access_token = token_data["access_token"]
-            self.expires_in = token_data["expires_in"]
-            self.token_timestamp = time.time()
-
-            self.save_access_token(self.access_token)
-            self.save_expire_access_token(self.expires_in)
-            self.save_access_token_timestamp(self.token_timestamp)
-
-            # Si un nouveau refresh_token est renvoyé, on l'enregistre
-            new_refresh_token = token_data.get("refresh_token")
-            if new_refresh_token:
-                self.refresh_token = new_refresh_token
-                self.save_refresh_token(new_refresh_token)
-                print(f"Nouveau Refresh Token reçu et enregistré : {self.refresh_token}")
-            else:
-                print("Aucun nouveau refresh_token reçu.")
-
-            print("Access token rafraîchi avec succès !")
+            self._save_token_data(
+                token_data["access_token"],
+                token_data["expires_in"],
+                token_data.get("refresh_token"),
+            )
+            print("[OK] Token rafraîchi avec succès.")
             return self.access_token
-        else:
-            print("Erreur lors du rafraîchissement du token :", token_data)
-            # Supprimer le refresh_token en cas d'erreur
-            self.delete_refresh_token()
-            return None
+
+        print(f"[ERROR] Rafraîchissement du token : {token_data}")
+        # Supprimer le refresh_token invalide
+        config = load_config()
+        config.pop("ZOHO_REFRESH_TOKEN", None)
+        save_config(config)
+        self.refresh_token = None
+        return None
 
     def get_valid_access_token(self):
-        """Retourne un access token valide, en le rafraîchissant si nécessaire"""
-        if not self.refresh_token:
-            print("generation refresh token depuis granted token!")
-            return self.get_access_token()
-       
-        if not self.access_token or (time.time() - float(self.token_timestamp)) >= float(self.expires_in):
-            print("Token expiré ou inexistant. Récupération en cours...")
+        """Retourne un access token valide, en le rafraîchissant si nécessaire."""
+        if self._is_token_valid():
+            return self.access_token
+
+        if self.refresh_token:
             return self.refresh_access_token()
-        return self.access_token
+
+        return self.get_access_token()

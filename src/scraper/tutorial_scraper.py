@@ -178,7 +178,15 @@ def _extract_section_text(section, skip_title: bool = True) -> str:
         HTML nettoyé contenant paragraphes, listes, tableaux et icônes inline.
     """
     html_parts = []
-    for widget in section.find_all('div', class_='elementor-widget-container'):
+    widgets = section.find_all('div', class_='elementor-widget-container')
+    
+    top_level_widgets = []
+    for widget in widgets:
+        parent_widget = widget.find_parent('div', class_='elementor-widget-container')
+        if parent_widget not in widgets:
+            top_level_widgets.append(widget)
+    
+    for widget in top_level_widgets:
         for child in widget.children:
             if not hasattr(child, 'name') or child.name is None:
                 continue
@@ -202,12 +210,15 @@ def _extract_section_text(section, skip_title: bool = True) -> str:
                         img['style'] = 'vertical-align: middle; max-height: 40px; display: inline;'
 
             # Extraire le contenu utile (p, ul, ol, table, div avec du texte)
-            inner = child.find_all(['p', 'ul', 'ol', 'table'])
-            if inner:
-                for elem in inner:
-                    html_parts.append(str(elem))
-            elif child.get_text(strip=True):
+            if child.name in ('p', 'ul', 'ol', 'table'):
                 html_parts.append(str(child))
+            else:
+                inner = child.find_all(['p', 'ul', 'ol', 'table'], recursive=False)
+                if inner:
+                    for elem in inner:
+                        html_parts.append(str(elem))
+                elif child.get_text(strip=True):
+                    html_parts.append(str(child))
     return '\n'.join(html_parts)
 
 
@@ -383,7 +394,24 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
         title = title_elem.get_text(strip=True) if title_elem else "Tutoriel"
 
         # --- 2. Parcourir les sections Elementor --------------------------------
-        all_sections = soup.find_all('section', class_=True)
+        all_sections_raw = soup.find_all('section', class_=True)
+
+        # Ne garder que les sections feuilles (sans sous-sections)
+        # pour éviter de traiter le même contenu plusieurs fois
+        all_sections = []
+        for s in all_sections_raw:
+            child_sections = s.find_all('section', class_=True, recursive=True)
+            # find_all inclut l'élément lui-même si récursif, on vérifie les enfants directs
+            has_children = any(cs is not s for cs in child_sections)
+            if not has_children:
+                all_sections.append(s)
+            else:
+                # Garder les sections parentes seulement si elles n'ont pas
+                # de sous-sections de contenu (ex: intro, metadata)
+                child_text = ''.join(cs.get_text(strip=True) for cs in child_sections if cs is not s)
+                own_widgets = s.find_all('div', class_='elementor-widget-container', recursive=False)
+                if not child_text and own_widgets:
+                    all_sections.append(s)
 
         intro_html = ''
         metadata_html = ''
