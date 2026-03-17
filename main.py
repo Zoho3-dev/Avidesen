@@ -105,6 +105,7 @@ def fetch_tutorials_content(tutorial_list):
         content = scrape_tutorial_content(info["url"])
         if content:
             content["category"] = info.get("category")
+            content["product"] = info.get("product")
             full_tutorials.append(content)
         else:
             print("  [WARNING] Echec de l'extraction")
@@ -131,15 +132,11 @@ def save_tutorials(tutorials):
 
 def publish_tutorials_to_zoho(tutorials):
     """
-    Cree un article Zoho Desk pour chaque tutoriel.
+    Publie chaque tutoriel comme article Zoho Desk.
 
     Args:
         tutorials: Liste de tutoriels avec contenu HTML.
     """
-    print("\n" + "=" * 60)
-    print("PUBLICATION SUR ZOHO DESK")
-    print("=" * 60)
-
     total = len(tutorials)
     success = 0
 
@@ -180,12 +177,11 @@ def main():
     # 3. Sauvegarder en local
     save_tutorials(full_tutorials)
 
-    # 4. Publier sur Zoho (optionnel)
-    answer = input("\nPublier les articles sur Zoho Desk ? (o/n) : ").strip().lower()
-    if answer in ("o", "oui", "y", "yes"):
-        publish_tutorials_to_zoho(full_tutorials)
-    else:
-        print("\n[INFO] Publication annulee. Les tutoriels restent dans tutorials_data/.")
+    # 4. Publier sur Zoho Desk (automatique)
+    print("\n" + "=" * 60)
+    print("PUBLICATION AUTOMATIQUE SUR ZOHO DESK")
+    print("=" * 60)
+    publish_tutorials_to_zoho(full_tutorials)
 
     print("\n" + "=" * 60)
     print("TERMINE")

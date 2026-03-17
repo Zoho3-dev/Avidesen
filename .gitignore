@@ -2,3 +2,14 @@ config.txt
 __pycache__/
 venv/
 tutorials_data/
+
+# PyInstaller build files
+build/
+dist/
+*.spec
+
+# PyInstaller temp files
+*.pyc
+*.pyo
+*.pyd
+*.manifest

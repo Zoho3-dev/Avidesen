@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from src.config.settings import get_zoho_config, get_zoho_tutorial_category_id
 from src.utils.text_utils import sanitize_permalink
 
-ZOHO_ARTICLES_URL = "https://desk.zoho.eu/api/v1/articles"
+ZOHO_ARTICLES_URL = "https://desk.zoho.com/api/v1/articles"
 
 
 def _build_zoho_headers(access_token: str, org_id: str) -> Dict[str, str]:

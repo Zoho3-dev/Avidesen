@@ -1,149 +1,80 @@
 """
 Module de formatage des tutoriels pour Zoho Desk.
-Convertit les tutoriels en HTML formaté.
+Nettoie le HTML scrapé et le prépare pour publication.
 """
 
 from typing import List, Dict
 
 
-def format_tutorial_html(tutorial: Dict) -> str:
-    """
-    Formate un tutoriel en HTML pour Zoho Desk.
-    
-    Args:
-        tutorial: Dictionnaire contenant les données du tutoriel
-        
-    Returns:
-        HTML formaté du tutoriel
-    """
-    html_parts = []
-    
-    # Titre du tutoriel
-    title = tutorial.get('title', 'Tutoriel')
-    html_parts.append(f"<h2 style='color:#2874A6; margin-top:20px; border-bottom:2px solid #2874A6; padding-bottom:8px;'>{title}</h2>")
-    
-    # Lien vers le tutoriel original
-    tutorial_url = tutorial.get('url', '')
-    if tutorial_url:
-        html_parts.append(f"""
-<div style='background:#E8F4F8; padding:12px; border-left:4px solid #2E86C1; margin:12px 0;'>
-    <p style='margin:0;'>
-        <strong>📖 Voir le tutoriel complet :</strong> 
-        <a href='{tutorial_url}' target='_blank' style='color:#2E86C1;'>Ouvrir sur le site Avidsen</a>
-    </p>
-</div>
-""")
-    
-    # Étapes du tutoriel
-    steps = tutorial.get('steps', [])
-    if steps:
-        for step in steps:
-            step_number = step.get('number', 0)
-            step_title = step.get('title', f'Étape {step_number}')
-            step_description = step.get('description', '')
-            step_image = step.get('image_url', '')
-            
-            # Conteneur de l'étape
-            html_parts.append(f"""
-<div style='margin:20px 0; padding:15px; background:#F9F9F9; border-radius:8px; border:1px solid #E0E0E0;'>
-    <h3 style='color:#2E86C1; margin-top:0;'>
-        <span style='background:#2E86C1; color:white; padding:4px 12px; border-radius:4px; margin-right:8px;'>{step_number}</span>
-        {step_title}
-    </h3>
-""")
-            
-            # Image de l'étape
-            if step_image:
-                html_parts.append(f"""
-    <div style='text-align:center; margin:15px 0;'>
-        <img src='{step_image}' alt='{step_title}' style='max-width:100%; max-height:500px; border:1px solid #ddd; border-radius:4px; box-shadow:0 2px 4px rgba(0,0,0,0.1);'/>
-    </div>
-""")
-            
-            # Description de l'étape
-            if step_description:
-                # Convertir les retours à la ligne en paragraphes
-                paragraphs = step_description.split('\n')
-                for para in paragraphs:
-                    if para.strip():
-                        html_parts.append(f"    <p style='line-height:1.6; margin:8px 0;'>{para.strip()}</p>")
-            
-            html_parts.append("</div>")
-    
-    return '\n'.join(html_parts)
-
-
 def format_tutorials_section(tutorials: List[Dict]) -> str:
     """
-    Formate une section complète avec plusieurs tutoriels EN UTILISANT LE HTML ORIGINAL.
-    Version propre sans éléments superflus.
-    
+    Nettoie et assemble le HTML des tutoriels pour Zoho Desk.
+
     Args:
-        tutorials: Liste de tutoriels
-        
+        tutorials: Liste de tutoriels avec 'html_content'.
+
     Returns:
-        HTML formaté de la section tutoriels (HTML original préservé)
+        HTML nettoyé prêt pour publication.
     """
     if not tutorials:
         return ""
-    
+
     html_parts = []
-    
-    # Ajouter chaque tutoriel avec son HTML original
     for tutorial in tutorials:
-        # Lien vers le tutoriel original (discret)
-        tutorial_url = tutorial.get('url', '')
-        if tutorial_url:
-            html_parts.append(f"""
-<div style='margin:15px 0 10px 0; padding:8px; background:#f0f8ff; border-left:3px solid #2E86C1;'>
-    <p style='margin:0; font-size:14px;'><strong>📖 Source :</strong> <a href='{tutorial_url}' target='_blank' style='color:#2E86C1; text-decoration:none;'>Voir sur avidsen.com</a></p>
-</div>
-""")
-        
-        # Ajouter le HTML original du tutoriel (PROPRE, sans navigation)
         html_content = tutorial.get('html_content', '')
         if html_content:
-            html_parts.append(html_content)
-        else:
-            # Fallback sur l'ancien format si html_content n'existe pas
-            html_parts.append(format_tutorial_html(tutorial))
-        
-        # Séparateur entre tutoriels si plusieurs
+            html_parts.append(clean_tutorial_html(html_content))
+
         if len(tutorials) > 1:
             html_parts.append("<hr style='margin:30px 0; border:none; border-top:1px solid #e0e0e0;'/>")
-    
+
     return '\n'.join(html_parts)
 
 
-def create_tutorial_summary(tutorials: List[Dict]) -> str:
+def clean_tutorial_html(html_content: str) -> str:
     """
-    Crée un résumé des tutoriels disponibles (pour affichage en haut de page).
+    Nettoie le HTML d'un tutoriel pour enlever les éléments superflus
+    tout en préservant les images (principales et icônes inline), tableaux et listes.
+    
+    Utilise BeautifulSoup pour un nettoyage précis sans risque de casser le contenu.
     
     Args:
-        tutorials: Liste de tutoriels
+        html_content: HTML original du tutoriel
         
     Returns:
-        HTML du résumé
+        HTML nettoyé
     """
-    if not tutorials:
-        return ""
+    from bs4 import BeautifulSoup
+    import re
     
-    html_parts = []
+    soup = BeautifulSoup(html_content, 'html.parser')
     
-    html_parts.append("""
-<div style='background:#FFF9E6; padding:15px; border-left:4px solid #FFC107; margin:15px 0; border-radius:4px;'>
-    <h3 style='color:#F57C00; margin-top:0;'>📚 Tutoriels disponibles pour ce produit :</h3>
-    <ul style='margin:8px 0; padding-left:20px;'>
-""")
+    # Mots-clés identifiant les éléments à supprimer
+    REMOVE_KEYWORDS = ['sommaire', '📖', 'voir sur avidsen.com']
     
-    for tutorial in tutorials:
-        title = tutorial.get('title', 'Tutoriel')
-        url = tutorial.get('url', '#')
-        html_parts.append(f"        <li><a href='{url}' target='_blank' style='color:#2E86C1;'>{title}</a></li>")
+    # Supprimer les titres contenant "Sommaire"
+    for heading in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+        if 'sommaire' in heading.get_text(strip=True).lower():
+            heading.decompose()
     
-    html_parts.append("""
-    </ul>
-</div>
-""")
+    # Supprimer les <nav> et <script>/<style>
+    for tag in soup.find_all(['nav', 'script', 'style', 'noscript']):
+        tag.decompose()
     
-    return '\n'.join(html_parts)
+    # Supprimer les blocs contenant des mots-clés indésirables
+    # (uniquement les blocs de premier niveau, pas les enfants profonds)
+    for div in soup.find_all(['div', 'p']):
+        text = div.get_text(strip=True).lower()
+        # Ne supprimer que les petits blocs (< 200 caractères) contenant un mot-clé
+        if len(text) < 200 and any(kw in text for kw in REMOVE_KEYWORDS):
+            # Ne pas supprimer si le bloc contient des images ou tableaux utiles
+            if not div.find(['table', 'img']):
+                div.decompose()
+    
+    # Nettoyer les lignes vides multiples
+    result = str(soup)
+    result = re.sub(r'\n\s*\n\s*\n', '\n\n', result)
+    
+    return result.strip()
+
+
