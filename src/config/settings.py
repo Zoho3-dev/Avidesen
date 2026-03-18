@@ -95,6 +95,24 @@ def get_zoho_tutorial_category_id(category: str = None):
         print(f"[WARNING] {config_key} manquant dans config.txt, utilisation de la catégorie par défaut")
 
     # Fallback sur la catégorie générique
+
+    # Mapping catégorie site -> clé config Zoho
+    CATEGORY_MAP = {
+        'motorisation': 'ZOHO_TUTORIAL_CATEGORY_PORTAIL_ID',
+        'visiophone': 'ZOHO_TUTORIAL_CATEGORY_VISIOPHONE_ID',
+        'securite': 'ZOHO_TUTORIAL_CATEGORY_CAMERA_ID',
+        'solaire': 'ZOHO_TUTORIAL_CATEGORY_SOLAIRE_ID',
+        'domotique': 'ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID',
+    }
+
+    if category and category in CATEGORY_MAP:
+        config_key = CATEGORY_MAP[category]
+        category_id = config.get(config_key)
+        if category_id:
+            return category_id
+        print(f"[WARNING] {config_key} manquant dans config.txt, utilisation de la catégorie par défaut")
+
+    # Fallback sur la catégorie générique
     category_id = config.get("ZOHO_TUTORIAL_CATEGORY_ID")
     if not category_id:
         # Prendre la première catégorie disponible
@@ -112,12 +130,12 @@ def get_valid_access_token():
     """
     Retourne un access token valide en utilisant refresh_token si possible,
     sinon utilise le granted_code.
-    
+
     Returns:
         Access token valide.
     """
     from src.zoho.auth import ZohoAuth
-    
+
     config = load_config()
     
     # 1) Essayer avec refresh_token si disponible
@@ -133,7 +151,7 @@ def get_valid_access_token():
     # 2) Fallback sur granted_code
     if config.get("GRANTED_CODE"):
         try:
-            auth = ZohoAuth()
+    auth = ZohoAuth()
             token = auth.get_access_token()
             if token:
                 return token
@@ -141,5 +159,5 @@ def get_valid_access_token():
             print(f"[ERROR] Échec granted_code: {e}")
     
     print("[ERROR] Aucun refresh_token ni granted_code disponible.")
-    exit(1)
+        exit(1)
 
