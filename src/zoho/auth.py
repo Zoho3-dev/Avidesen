@@ -52,9 +52,6 @@ class ZohoAuth:
 
     def get_access_token(self):
         """Obtenir un nouvel access token avec le granted_code."""
-        if self.refresh_token:
-            return self.refresh_access_token()
-
         if not self.granted_code:
             print("[ERROR] Aucun granted_code disponible !")
             return None
@@ -70,10 +67,13 @@ class ZohoAuth:
         token_data = response.json()
 
         if response.status_code == 200 and "access_token" in token_data:
+            refresh_token = token_data.get("refresh_token")
+            if not refresh_token:
+                print("[WARNING] Aucun refresh_token dans la réponse. Regenerez le granted_code avec access_type=offline")
             self._save_token_data(
                 token_data["access_token"],
                 token_data["expires_in"],
-                token_data.get("refresh_token"),
+                refresh_token,
             )
             print("[OK] Access token généré avec succès.")
             return self.access_token
@@ -121,7 +121,16 @@ class ZohoAuth:
         if self._is_token_valid():
             return self.access_token
 
+        # Essayer le refresh_token d'abord
         if self.refresh_token:
-            return self.refresh_access_token()
+            token = self.refresh_access_token()
+            if token:
+                return token
+            print("[INFO] Refresh échoué, tentative avec granted_code...")
 
-        return self.get_access_token()
+        # Fallback sur le granted_code
+        if self.granted_code:
+            return self.get_access_token()
+
+        print("[ERROR] Aucun refresh_token ni granted_code disponible.")
+        return None

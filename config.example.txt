@@ -8,8 +8,12 @@ GRANTED_CODE=votre_granted_code
 # Organisation
 ZOHO_ORG_ID=votre_org_id
 
-# Categorie pour les tutoriels
-ZOHO_TUTORIAL_CATEGORY_ID=votre_category_id_tutoriels
+# Categories pour les tutoriels (une par categorie du site)
+ZOHO_TUTORIAL_CATEGORY_PORTAIL_ID=votre_category_id_portail
+ZOHO_TUTORIAL_CATEGORY_VISIOPHONE_ID=votre_category_id_visiophone
+ZOHO_TUTORIAL_CATEGORY_CAMERA_ID=votre_category_id_camera
+ZOHO_TUTORIAL_CATEGORY_SOLAIRE_ID=votre_category_id_solaire
+ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID=votre_category_id_domotique
 
 # Tokens (generes automatiquement)
 # ZOHO_ACCESS_TOKEN=

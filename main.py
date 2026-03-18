@@ -49,14 +49,29 @@ def discover_all_tutorials():
                 continue
 
             soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Pattern standard pour la plupart des catégories
             pattern = re.compile(r'/tutoriel-sav/' + re.escape(category) + r'/ref/[^/]+$')
             product_links = soup.find_all("a", href=pattern)
+            
+            # Pattern spécial pour domotique
+            if category == 'domotique':
+                domotique_pattern = re.compile(r'/categorie_tutoriel_domotique/\d+$')
+                domotique_links = soup.find_all("a", href=domotique_pattern)
+                product_links.extend(domotique_links)
+            
             print(f"  [INFO] {len(product_links)} produit(s) trouve(s)")
 
             for product_link in product_links:
                 product_url = product_link.get("href", "")
                 product_name = product_link.get_text(strip=True)
+                
+                # Extraction de la référence selon le pattern
                 ref_match = re.search(r'/ref/([^/]+)$', product_url)
+                if not ref_match:
+                    # Pattern domotique: /categorie_tutoriel_domotique/{ref}
+                    ref_match = re.search(r'/categorie_tutoriel_domotique/(\d+)$', product_url)
+                
                 if not ref_match:
                     continue
 
@@ -142,10 +157,11 @@ def publish_tutorials_to_zoho(tutorials):
 
     for idx, tutorial in enumerate(tutorials, 1):
         title = tutorial.get("title", "Tutoriel")
-        print(f"\n[{idx}/{total}] {title[:60]}...")
+        category = tutorial.get("category")
+        print(f"\n[{idx}/{total}] {title[:60]}... [{category or '?'}]")
 
         html = format_tutorials_section([tutorial])
-        result = create_tutorial_article(title, html)
+        result = create_tutorial_article(title, html, category=category)
         if result:
             success += 1
 

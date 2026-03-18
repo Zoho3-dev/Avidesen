@@ -22,7 +22,7 @@ def _build_zoho_headers(access_token: str, org_id: str) -> Dict[str, str]:
     }
 
 
-def create_tutorial_article(title: str, html_content: str, category_id: str = None) -> Optional[Dict]:
+def create_tutorial_article(title: str, html_content: str, category: str = None, category_id: str = None) -> Optional[Dict]:
     """
     Crée un article tutoriel dans Zoho Desk.
     Rafraîchit automatiquement le token en cas de 401.
@@ -30,16 +30,16 @@ def create_tutorial_article(title: str, html_content: str, category_id: str = No
     Args:
         title: Titre de l'article.
         html_content: Contenu HTML de l'article.
-        category_id: ID de la catégorie Zoho (utilise la config par défaut si non fourni).
+        category: Catégorie du tutoriel (motorisation, visiophone, securite, solaire, domotique).
+        category_id: ID de la catégorie Zoho (prioritaire sur category si fourni).
 
     Returns:
         Réponse JSON de l'API en cas de succès, None sinon.
     """
     if not category_id:
-        category_id = get_zoho_tutorial_category_id()
+        category_id = get_zoho_tutorial_category_id(category)
 
     permalink = sanitize_permalink(title)
-    print(f"[DEBUG] Permalink for '{title[:50]}...': {permalink}")
     
     body = {
         "title": title,
@@ -58,7 +58,7 @@ def create_tutorial_article(title: str, html_content: str, category_id: str = No
         fallback_permalink = f"tutorial-{int(time.time())}"
         body["permalink"] = fallback_permalink
         print(f"[INFO] Retrying with fallback permalink: {fallback_permalink}")
-        result = _zoho_request("POST", ZOHO_ARTICLES_URL, body, title, is_permalink_retry=True)
+        result = _zoho_request("POST", ZOHO_ARTICLES_URL, body, title)
     
     return result
 
@@ -99,7 +99,7 @@ def _zoho_request(method: str, url: str, body: dict, label: str = "", is_permali
                 print("[INFO] Token expiré, rafraîchissement automatique...")
                 from src.zoho.auth import ZohoAuth
                 auth = ZohoAuth()
-                auth.refresh_access_token()
+                auth.get_valid_access_token()
                 continue
 
             # Erreur de permalink → retry avec fallback si ce n'est pas déjà un retry

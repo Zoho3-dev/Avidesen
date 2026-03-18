@@ -69,7 +69,11 @@ def get_product_tutorials(product_ref: str, categories: List[str] = None) -> Lis
     
     for category in categories:
         # Construire l'URL de la page produit
-        url = f"{TUTORIAL_BASE_URL}/{category}/ref/{product_ref}"
+        # Cas spécial pour domotique qui utilise un format d'URL différent
+        if category == 'domotique':
+            url = f"https://www.avidsen.com/fr/categorie_tutoriel_domotique/{product_ref}"
+        else:
+            url = f"{TUTORIAL_BASE_URL}/{category}/ref/{product_ref}"
         
         try:
             response = requests.get(url, headers=HEADERS, timeout=20)
@@ -222,14 +226,37 @@ def _extract_section_text(section, skip_title: bool = True) -> str:
     return '\n'.join(html_parts)
 
 
-def _build_step_html(img_urls: list, step_title: str, step_body: str) -> str:
+# Couleurs du site Avidsen
+SITE_HEADING_COLOR = '#334956'  # --e-global-color-primary
+SITE_ACCENT_COLOR = '#00AEDD'   # --e-global-color-secondary
+SITE_GREY_BG = '#e5e5e5'        # --e-global-color-3e84a7e
+SITE_FONT_FAMILY = "'Poppins', 'Helvetica Neue', Arial, sans-serif"
+SITE_FONT_SIZE = '15px'
+
+
+def _has_grey_background(section) -> bool:
+    """Vérifie si une section Elementor a un fond gris."""
+    data_settings = section.get('data-settings', '')
+    if 'background_background' in data_settings:
+        return True
+    # Vérifier aussi dans les div enfants directs
+    for div in section.find_all('div', class_=True, recursive=False):
+        ds = div.get('data-settings', '')
+        if 'background_background' in ds:
+            return True
+    return False
+
+
+def _build_step_html(img_urls: list, step_title: str, step_body: str, grey_bg: bool = False) -> str:
     """Construit le HTML d'une étape avec layout image gauche / texte droite.
 
     Args:
         img_urls: Liste d'URLs d'images principales (peut être vide).
         step_title: Titre de l'étape.
         step_body: HTML du corps de l'étape (peut contenir des icônes inline).
+        grey_bg: Si True, ajoute un fond gris à la section.
     """
+    bg_style = f'background-color: {SITE_GREY_BG}; padding: 15px; border-radius: 6px; ' if grey_bg else ''
     img_cell = ''
     if img_urls:
         imgs_html = ''
@@ -244,20 +271,28 @@ def _build_step_html(img_urls: list, step_title: str, step_body: str) -> str:
             f'{imgs_html}'
             f'</td>'
         )
+    title_html = ''
+    if step_title:
+        title_html = (
+            f'<h3 style="color: {SITE_HEADING_COLOR}; font-size: 18px; '
+            f'font-family: {SITE_FONT_FAMILY}; margin: 0 0 0.5em 0; font-weight: 600;">'
+            f'{step_title}</h3>'
+        )
     text_cell = (
-        f'<td style="vertical-align: top; padding: 10px;">'
-        f'<h3 style="color: #2E86C1; font-size: 1.15em; margin: 0 0 0.5em 0; font-weight: 600;">{step_title}</h3>'
+        f'<td style="vertical-align: top; padding: 10px; font-size: {SITE_FONT_SIZE}; '
+        f'font-family: {SITE_FONT_FAMILY};">'
+        f'{title_html}'
         f'{step_body}'
         f'</td>'
     )
     if img_cell:
         return (
-            f'<table style="width: 100%; border-collapse: collapse; margin: 1.5em 0;" cellpadding="0" cellspacing="0">'
+            f'<table style="width: 100%; border-collapse: collapse; margin: 1.5em 0; {bg_style}" cellpadding="0" cellspacing="0">'
             f'<tr>{img_cell}{text_cell}</tr></table>'
         )
     return (
-        f'<div style="margin: 1.5em 0;">'
-        f'<h3 style="color: #2E86C1; font-size: 1.15em; margin: 0 0 0.5em 0; font-weight: 600;">{step_title}</h3>'
+        f'<div style="margin: 1.5em 0; {bg_style}">'
+        f'{title_html}'
         f'{step_body}'
         f'</div>'
     )
@@ -283,6 +318,8 @@ def _build_content_section_html(section) -> str:
       - 1 colonne ou sans colonnes → contenu séquentiel
     Préserve les icônes inline dans le texte et capture TOUTES les images principales.
     """
+    grey_bg = _has_grey_background(section)
+
     # Chercher les colonnes Elementor (col-50, col-33, etc.)
     cols = section.find_all('div', class_=re.compile(r'elementor-col-\d+'))
 
@@ -303,7 +340,6 @@ def _build_content_section_html(section) -> str:
         col_b = unique_cols[1]
 
         # Déterminer quelle colonne est la colonne image
-        # La colonne image n'a pas de texte significatif (hors alt d'images)
         col_a_text = col_a.get_text(strip=True)
         col_b_text = col_b.get_text(strip=True)
         col_a_main_imgs = _collect_main_images(col_a)
@@ -328,12 +364,14 @@ def _build_content_section_html(section) -> str:
         # Corps (avec icônes inline préservées)
         body = _extract_section_text(text_col)
 
-        return _build_step_html(img_urls, title, body)
+        return _build_step_html(img_urls, title, body, grey_bg=grey_bg)
 
     else:
         # --- Layout sans colonnes : contenu séquentiel ---
         img_urls = _collect_main_images(section)
         body = _extract_section_text(section)
+
+        bg_style = f'background-color: {SITE_GREY_BG}; padding: 15px; border-radius: 6px; ' if grey_bg else ''
 
         # Gérer les tableaux autonomes
         tables = section.find_all('table')
@@ -341,26 +379,28 @@ def _build_content_section_html(section) -> str:
             table_html = '\n'.join(str(t) for t in tables)
             if heading_text:
                 return (
-                    f'<div style="margin: 1.5em 0;">'
-                    f'<h3 style="color: #2E86C1; font-size: 1.15em; margin: 0 0 0.5em 0; '
+                    f'<div style="margin: 1.5em 0; {bg_style}">'
+                    f'<h3 style="color: {SITE_HEADING_COLOR}; font-size: 18px; '
+                    f'font-family: {SITE_FONT_FAMILY}; margin: 0 0 0.5em 0; '
                     f'font-weight: 600;">{heading_text}</h3>'
                     f'{table_html}'
                     f'</div>'
                 )
-            return f'<div style="margin: 1em 0;">{table_html}</div>'
+            return f'<div style="margin: 1em 0; {bg_style}">{table_html}</div>'
 
         if heading_text and img_urls:
-            return _build_step_html(img_urls, heading_text, body)
+            return _build_step_html(img_urls, heading_text, body, grey_bg=grey_bg)
         elif heading_text:
             return (
-                f'<div style="margin: 1.5em 0;">'
-                f'<h3 style="color: #2E86C1; font-size: 1.15em; margin: 0 0 0.5em 0; '
+                f'<div style="margin: 1.5em 0; {bg_style}">'
+                f'<h3 style="color: {SITE_HEADING_COLOR}; font-size: 18px; '
+                f'font-family: {SITE_FONT_FAMILY}; margin: 0 0 0.5em 0; '
                 f'font-weight: 600;">{heading_text}</h3>'
                 f'{body}'
                 f'</div>'
             )
         elif body.strip():
-            return f'<div style="margin: 1em 0;">{body}</div>'
+            return f'<div style="margin: 1em 0; {bg_style}">{body}</div>'
         return ''
 
 
@@ -396,33 +436,29 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
         # --- 2. Parcourir les sections Elementor --------------------------------
         all_sections_raw = soup.find_all('section', class_=True)
 
-        # Ne garder que les sections feuilles (sans sous-sections)
-        # pour éviter de traiter le même contenu plusieurs fois
-        all_sections = []
+        # Classifier chaque section : feuille (leaf) ou parent
+        leaf_sections = set()
         for s in all_sections_raw:
             child_sections = s.find_all('section', class_=True, recursive=True)
-            # find_all inclut l'élément lui-même si récursif, on vérifie les enfants directs
-            has_children = any(cs is not s for cs in child_sections)
-            if not has_children:
-                all_sections.append(s)
-            else:
-                # Garder les sections parentes seulement si elles n'ont pas
-                # de sous-sections de contenu (ex: intro, metadata)
-                child_text = ''.join(cs.get_text(strip=True) for cs in child_sections if cs is not s)
-                own_widgets = s.find_all('div', class_='elementor-widget-container', recursive=False)
-                if not child_text and own_widgets:
-                    all_sections.append(s)
+            is_leaf = not any(cs is not s for cs in child_sections)
+            if is_leaf:
+                leaf_sections.add(id(s))
 
         intro_html = ''
         metadata_html = ''
         content_html = ''
-        in_content_zone = False  # Passe à True après la metadata / sommaire
+        in_content_zone = False
 
-        # Mots-clés de sections footer (à ignorer, pas le breadcrumb)
+        # Mots-clés de sections footer (à ignorer)
         FOOTER_KEYWORDS = ['Restons connectés', 'A propos d']
+        # Mots-clés de contenu (activent in_content_zone si on ne l'a pas encore détecté)
+        CONTENT_KEYWORDS = ['Etape ', 'ATTENTION', 'RAPPEL', 'Conseil', 'Extra :', 'SOLUTION', 'Methode ']
 
-        for section in all_sections:
+        # On parcourt TOUTES les sections pour détecter les zones,
+        # mais on n'extrait le contenu QUE des sections feuilles
+        for section in all_sections_raw:
             text = section.get_text(strip=True)
+            is_leaf = id(section) in leaf_sections
 
             # Ignorer les sections vides
             if len(text) < 10:
@@ -439,14 +475,48 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             # --- Introduction (section avec h1) ---------------------------------
             h1 = section.find('h1')
             if h1 and not in_content_zone:
+                if not is_leaf:
+                    continue
+                # Extraire l'image produit de la colonne gauche (col-33)
+                intro_img_url = None
+                cols = section.find_all('div', class_=re.compile(r'elementor-col-\d+'))
+                unique_cols = []
+                for col in cols:
+                    parent_col = col.find_parent('div', class_=re.compile(r'elementor-col-\d+'))
+                    if parent_col not in cols:
+                        unique_cols.append(col)
+                for col in unique_cols:
+                    col_imgs = _collect_main_images(col)
+                    col_text = col.get_text(strip=True)
+                    if col_imgs and not col_text:
+                        intro_img_url = col_imgs[0]
+                        break
+
                 desc_parts = []
                 for widget in section.find_all('div', class_='elementor-widget-container'):
                     for elem in widget.find_all(['p', 'ul', 'ol']):
                         elem_text = elem.get_text(strip=True)
                         if elem_text and elem_text != title:
-                            elem['style'] = 'margin: 0.5em 0; line-height: 1.6;'
+                            elem['style'] = (
+                                f'margin: 0.5em 0; line-height: 1.6; '
+                                f'font-size: {SITE_FONT_SIZE}; font-family: {SITE_FONT_FAMILY};'
+                            )
                             desc_parts.append(str(elem))
-                if desc_parts:
+
+                # Construire l'intro avec image produit à gauche
+                if intro_img_url and desc_parts:
+                    intro_html = (
+                        f'<table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5em;" '
+                        f'cellpadding="0" cellspacing="0"><tr>'
+                        f'<td style="width: 120px; vertical-align: top; padding: 10px;">'
+                        f'<img src="{intro_img_url}" alt="{title}" '
+                        f'style="max-width: 100px; height: auto; border-radius: 4px;" />'
+                        f'</td>'
+                        f'<td style="vertical-align: top; padding: 10px;">'
+                        + '\n'.join(desc_parts)
+                        + '</td></tr></table>'
+                    )
+                elif desc_parts:
                     intro_html = (
                         '<div style="margin-bottom: 1.5em;">'
                         + '\n'.join(desc_parts)
@@ -456,45 +526,47 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
 
             # --- Metadata (difficulté, temps, étapes) ---------------------------
             if 'Difficulté' in text and 'Temps nécessaire' in text:
-                meta_items = []
-                for widget in section.find_all('div', class_='elementor-widget-container'):
-                    item_text = widget.get_text(strip=True)
-                    if item_text and len(item_text) > 2:
-                        meta_items.append(item_text)
-                if meta_items:
-                    metadata_html = (
-                        '<div style="background: #f5f7fa; border-radius: 6px; '
-                        'padding: 12px 16px; margin-bottom: 1.5em; font-size: 0.9em; '
-                        'color: #555;">'
-                    )
-                    for item in meta_items:
-                        metadata_html += f'<span style="margin-right: 20px;">{item}</span>'
-                    metadata_html += '</div>'
+                if is_leaf:
+                    meta_items = []
+                    for widget in section.find_all('div', class_='elementor-widget-container'):
+                        item_text = widget.get_text(strip=True)
+                        if item_text and len(item_text) > 2:
+                            meta_items.append(item_text)
+                    if meta_items:
+                        metadata_html = (
+                            f'<div style="background: {SITE_GREY_BG}; border-radius: 6px; '
+                            f'padding: 12px 16px; margin-bottom: 1.5em; font-size: 14px; '
+                            f'font-family: {SITE_FONT_FAMILY}; color: #555;">'
+                        )
+                        for item in meta_items:
+                            metadata_html += f'<span style="margin-right: 20px;">{item}</span>'
+                        metadata_html += '</div>'
                 in_content_zone = True
                 continue
 
             # --- "Ce tutoriel est applicable pour" – capturer les produits ------
             if 'Ce tutoriel est applicable' in text[:40]:
-                product_names = []
-                for span in section.find_all('span', class_='ae-term-item'):
-                    a_tag = span.find('a')
-                    name = a_tag.get_text(strip=True) if a_tag else span.get_text(strip=True)
-                    if name:
-                        product_names.append(name)
-                if not product_names:
-                    # Fallback : extraire le texte brut après le titre
-                    raw = text.replace('Ce tutoriel est applicable pour :', '').strip()
-                    if raw:
-                        product_names = [p.strip() for p in raw.split(',') if p.strip()]
-                if product_names:
-                    applicable_html = (
-                        '<div style="background: #e8f4f8; border-left: 4px solid #2E86C1; '
-                        'padding: 12px 16px; margin-bottom: 1.5em; border-radius: 4px;">'
-                        '<strong>Ce tutoriel est applicable pour :</strong><br/>'
-                        + ', '.join(product_names)
-                        + '</div>'
-                    )
-                    intro_html += applicable_html
+                if is_leaf:
+                    product_names = []
+                    for span in section.find_all('span', class_='ae-term-item'):
+                        a_tag = span.find('a')
+                        name = a_tag.get_text(strip=True) if a_tag else span.get_text(strip=True)
+                        if name:
+                            product_names.append(name)
+                    if not product_names:
+                        raw = text.replace('Ce tutoriel est applicable pour :', '').strip()
+                        if raw:
+                            product_names = [p.strip() for p in raw.split(',') if p.strip()]
+                    if product_names:
+                        applicable_html = (
+                            f'<div style="background: #e8f4f8; border-left: 4px solid {SITE_ACCENT_COLOR}; '
+                            f'padding: 12px 16px; margin-bottom: 1.5em; border-radius: 4px; '
+                            f'font-size: {SITE_FONT_SIZE}; font-family: {SITE_FONT_FAMILY};">'
+                            f'<strong>Ce tutoriel est applicable pour :</strong><br/>'
+                            + ', '.join(product_names)
+                            + '</div>'
+                        )
+                        intro_html += applicable_html
                 continue
 
             # --- "Les étapes du tutoriel" (sommaire global) – ignorer -----------
@@ -502,8 +574,12 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                 in_content_zone = True
                 continue
 
-            # --- Zone de contenu : capturer TOUTE section -----------------------
-            if in_content_zone:
+            # --- Activer la zone de contenu si on détecte un mot-clé de contenu
+            if not in_content_zone and any(text.startswith(kw) for kw in CONTENT_KEYWORDS):
+                in_content_zone = True
+
+            # --- Zone de contenu : capturer uniquement les feuilles -------------
+            if in_content_zone and is_leaf:
                 section_html = _build_content_section_html(section)
                 if section_html:
                     content_html += section_html
@@ -517,8 +593,9 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             html_parts.append(metadata_html)
         if content_html:
             html_parts.append(
-                '<h2 style="color: #2E86C1; font-size: 1.4em; margin: 1.5em 0 0.5em 0; '
-                'font-weight: 600;">Les étapes du tutoriel :</h2>'
+                f'<h2 style="color: {SITE_HEADING_COLOR}; font-size: 22px; '
+                f'font-family: {SITE_FONT_FAMILY}; margin: 1.5em 0 0.5em 0; '
+                f'font-weight: 600;">Les étapes du tutoriel :</h2>'
             )
             html_parts.append(content_html)
 

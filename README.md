@@ -1,17 +1,19 @@
 # Avidsen Tutorials — Zoho Desk Publisher
 
-Outil Python qui scrape les tutoriels du site **avidsen.com** et les publie automatiquement dans la base de connaissances **Zoho Desk EU**.
+Outil Python qui scrape les tutoriels du site **avidsen.com** et les publie automatiquement dans la base de connaissances **Zoho Desk**, chaque tutoriel étant classé dans sa catégorie correspondante.
 
 ---
 
 ## Fonctionnalités
 
-- **Découverte automatique** des tutoriels par catégorie et par produit
-- **Extraction fidèle du contenu** : images, icônes inline, tableaux, listes, layouts 2 colonnes
-- **Dédoublonnage** : les tutoriels et sections de contenu ne sont jamais publiés en double
+- **Découverte automatique** des tutoriels par catégorie (motorisation, visiophone, sécurité, solaire, domotique) et par produit
+- **Extraction fidèle du contenu** : images produit, icônes inline, tableaux, listes, layouts 2 colonnes (image | texte)
+- **Scraping haute fidélité** : couleurs, polices (Poppins), fonds gris, tailles de police identiques au site original
+- **Publication par catégorie** : chaque tutoriel est publié dans sa catégorie Zoho correspondante (Portail, Visiophone, Caméra, Solaire, Domotique)
+- **Dédoublonnage** : les tutoriels ne sont jamais publiés en double
 - **Nettoyage HTML** : suppression du sommaire, navigation, scripts — conservation du contenu utile
-- **Publication automatique** via l'API Zoho Desk EU (OAuth 2.0)
-- **Rafraîchissement automatique du token** (aucune intervention manuelle nécessaire)
+- **Publication automatique** via l'API Zoho Desk (OAuth 2.0)
+- **Rafraîchissement automatique du token** avec fallback sur le granted_code
 - **Interface graphique** (tkinter) pour lancer le traitement sans ligne de commande
 - **Exécutable Windows** (.exe) pour une utilisation sans installation Python
 
@@ -32,25 +34,25 @@ Avidesen/
 │   └── TUTORIAL_SCRAPING_GUIDE.md  # Guide technique du scraping
 └── src/
     ├── config/
-    │   └── settings.py           # Chargement de config.txt + auto-refresh token
+    │   └── settings.py           # Chargement config + mapping catégories + auto-refresh token
     ├── scraper/
-    │   ├── tutorial_scraper.py   # Scraping du site Avidsen
+    │   ├── tutorial_scraper.py   # Scraping du site Avidsen (Elementor)
     │   └── tutorial_formatter.py # Nettoyage HTML pour Zoho Desk
     ├── utils/
-    │   └── text_utils.py         # Génération de permalinks
+    │   └── text_utils.py         # Génération de permalinks Zoho-compatible
     └── zoho/
-        ├── auth.py               # Authentification OAuth 2.0
-        └── api.py                # Création d'articles Zoho Desk EU
+        ├── auth.py               # Authentification OAuth 2.0 (refresh auto + fallback)
+        └── api.py                # Création d'articles Zoho Desk
 ```
 
 ---
 
-## Installation
+## Installation rapide
 
 ### Prérequis
 
 - **Python 3.10+**
-- Un compte **Zoho Desk EU** avec accès API
+- Un compte **Zoho Desk** avec accès API
 
 ### Étapes
 
@@ -68,6 +70,8 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 ```
 
+> Pour une installation détaillée sur un serveur Windows, voir [INSTALLATION.md](INSTALLATION.md).
+
 ---
 
 ## Configuration
@@ -81,26 +85,40 @@ copy config.example.txt config.txt
 ### 2. Remplir les valeurs
 
 ```ini
-# Identifiants API Zoho (depuis https://api-console.zoho.eu/)
+# Identifiants API Zoho (depuis https://api-console.zoho.com/)
 ZOHO_CLIENT_ID=votre_client_id
 ZOHO_CLIENT_SECRET=votre_client_secret
 GRANTED_CODE=votre_granted_code
 
-# Organisation Zoho Desk (visible dans Zoho Desk > Paramètres > Organisation)
+# Organisation Zoho Desk
 ZOHO_ORG_ID=votre_org_id
 
-# ID de la catégorie KB où publier les tutoriels
-ZOHO_TUTORIAL_CATEGORY_ID=votre_category_id
+# Catégories Zoho Desk (une par catégorie du site)
+ZOHO_TUTORIAL_CATEGORY_PORTAIL_ID=id_categorie_portail
+ZOHO_TUTORIAL_CATEGORY_VISIOPHONE_ID=id_categorie_visiophone
+ZOHO_TUTORIAL_CATEGORY_CAMERA_ID=id_categorie_camera
+ZOHO_TUTORIAL_CATEGORY_SOLAIRE_ID=id_categorie_solaire
+ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID=id_categorie_domotique
 ```
 
-### 3. Obtenir les identifiants Zoho
+### 3. Mapping des catégories
+
+| Catégorie site Avidsen | Clé config Zoho |
+|---|---|
+| `motorisation` | `ZOHO_TUTORIAL_CATEGORY_PORTAIL_ID` |
+| `visiophone` | `ZOHO_TUTORIAL_CATEGORY_VISIOPHONE_ID` |
+| `securite` | `ZOHO_TUTORIAL_CATEGORY_CAMERA_ID` |
+| `solaire` | `ZOHO_TUTORIAL_CATEGORY_SOLAIRE_ID` |
+| `domotique` | `ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID` |
+
+### 4. Obtenir les identifiants Zoho
 
 | Paramètre | Où le trouver |
 |---|---|
-| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | [Zoho API Console EU](https://api-console.zoho.eu/) → Self Client |
-| `GRANTED_CODE` | Zoho API Console EU → Generate Code (scope : `Desk.articles.ALL`) |
-| `ZOHO_ORG_ID` | Zoho Desk EU → Paramètres → Organisation → Identificateur |
-| `ZOHO_TUTORIAL_CATEGORY_ID` | Zoho Desk EU → Base de connaissances → Catégorie → ID dans l'URL |
+| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | [Zoho API Console](https://api-console.zoho.eu/) → Self Client |
+| `GRANTED_CODE` | Zoho API Console → Generate Code (scopes : `ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.org.ALL,Desk.basic.READ,Desk.basic.CREATE,Desk.settings.ALL,Desk.articles.READ,Desk.articles.CREATE,Desk.articles.UPDATE`) |
+| `ZOHO_ORG_ID` | Zoho Desk → Paramètres → Organisation → Identificateur |
+| Catégories | Zoho Desk → Base de connaissances → Catégorie → ID dans l'URL |
 
 > **Note :** Le `GRANTED_CODE` est à usage unique. Au premier lancement, il est échangé contre un `ZOHO_REFRESH_TOKEN` sauvegardé automatiquement. Les lancements suivants utilisent ce refresh token.
 
@@ -117,10 +135,10 @@ python main.py
 ```
 
 Le pipeline s'exécute automatiquement :
-1. **Découverte** des tutoriels sur avidsen.com
-2. **Extraction** du contenu HTML (dédoublonné)
+1. **Découverte** des tutoriels sur avidsen.com (5 catégories)
+2. **Extraction** du contenu HTML fidèle au site (images, couleurs, polices)
 3. **Sauvegarde** locale dans `tutorials_data/all_tutorials.json`
-4. **Publication** dans Zoho Desk EU (token rafraîchi automatiquement)
+4. **Publication** dans Zoho Desk par catégorie (token rafraîchi automatiquement)
 
 ### Option 2 : Interface graphique
 
@@ -142,28 +160,30 @@ python -m PyInstaller --onefile --windowed --name "Avidsen-Tutoriels" gui.py
 ## Pipeline de traitement
 
 ```
-avidsen.com                    Zoho Desk EU
-    │                               ▲
-    ▼                               │
-┌──────────────┐   ┌──────────┐   ┌─────────────┐
-│  Découverte  │──▶│Extraction│──▶│ Publication  │
-│  catégories  │   │  contenu │   │  articles    │
-│  + produits  │   │  HTML    │   │  (auto-token)│
-└──────────────┘   └────┬─────┘   └─────────────┘
-                        │
-                        ▼
-                 tutorials_data/
-                 all_tutorials.json
+avidsen.com                      Zoho Desk
+    │                                 ▲
+    ▼                                 │
+┌──────────────┐   ┌──────────┐   ┌──────────────────┐
+│  Découverte  │──▶│Extraction│──▶│   Publication     │
+│  5 catégories│   │  contenu │   │   par catégorie   │
+│  + produits  │   │  HTML    │   │   (auto-token)    │
+└──────────────┘   └────┬─────┘   └──────────────────┘
+                        │          motorisation → Portail
+                        ▼          visiophone → Visiophone
+                 tutorials_data/   securite → Caméra
+                 all_tutorials.json solaire → Solaire
+                                   domotique → Domotique
 ```
-
-Pour le détail technique du scraping : [docs/TUTORIAL_SCRAPING_GUIDE.md](docs/TUTORIAL_SCRAPING_GUIDE.md)
 
 ---
 
 ## Notes techniques
 
-- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401
-- Les tutoriels sont **dédoublonnés** par URL lors de la découverte et par contenu lors de l'extraction
+- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401, avec fallback sur le `GRANTED_CODE` (domaine EU : `accounts.zoho.eu`, `desk.zoho.eu`)
+- Le scraping utilise les **couleurs réelles du site** (`#334956` pour les titres, `#e5e5e5` pour les fonds gris, police Poppins 15px)
+- Les images produit sont incluses **à côté du texte** dans un layout table 2 colonnes
+- Les permalinks sont **générés automatiquement** avec retry sur un permalink de fallback en cas d'erreur 422
+- Les tutoriels sont **dédoublonnés** par URL lors de la découverte
 - Les tutoriels sont **sauvegardés localement** en JSON avant publication
 - Le fichier `config.txt` n'est **jamais versionné** (contient des secrets)
 
@@ -175,7 +195,9 @@ Pour le détail technique du scraping : [docs/TUTORIAL_SCRAPING_GUIDE.md](docs/T
 |---|---|
 | `ZOHO_ACCESS_TOKEN manquant` | Lancez `python refresh_token.py` |
 | Erreur 401 (token invalide) | Géré automatiquement ; sinon `python refresh_token.py` |
+| Erreur 422 (permalink) | Géré automatiquement avec un permalink de fallback |
 | Erreur 422 (orgId invalide) | Vérifiez `ZOHO_ORG_ID` dans `config.txt` |
-| Erreur 422 (categoryId invalide) | Vérifiez `ZOHO_TUTORIAL_CATEGORY_ID` dans `config.txt` |
+| Erreur 422 (categoryId invalide) | Vérifiez les IDs de catégorie dans `config.txt` |
 | `config.txt introuvable` | Copiez `config.example.txt` vers `config.txt` |
 | `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.eu](https://api-console.zoho.eu/) |
+| Tutoriel publié sans contenu | Relancez — le scraping détecte maintenant les sections non standard |
