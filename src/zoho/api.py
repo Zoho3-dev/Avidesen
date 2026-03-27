@@ -10,7 +10,7 @@ from typing import Dict, Optional
 from src.config.settings import get_zoho_config, get_zoho_tutorial_category_id
 from src.utils.text_utils import sanitize_permalink
 
-ZOHO_ARTICLES_URL = "https://desk.zoho.com/api/v1/articles"
+ZOHO_ARTICLES_URL = "https://desk.zoho.eu/api/v1/articles"
 
 
 def check_article_exists(title: str = None, permalink: str = None, category_id: str = None) -> Optional[Dict]:

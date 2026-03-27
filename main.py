@@ -145,6 +145,42 @@ def save_tutorials(tutorials):
 # Etape 4 : Publication sur Zoho Desk
 # ---------------------------------------------------------------------------
 
+def _deduplicate_titles(tutorials):
+    """
+    Détecte les titres en double et ajoute un suffixe pour les différencier.
+    Ex: deux tutoriels "Diagnostic résolution de panne SORIA" deviennent
+        "Diagnostic résolution de panne SORIA" et
+        "Diagnostic résolution de panne SORIA (2)".
+
+    Args:
+        tutorials: Liste de tutoriels.
+
+    Returns:
+        Liste de tutoriels avec titres uniques.
+    """
+    title_count = {}
+    for tutorial in tutorials:
+        title = tutorial.get("title", "Tutoriel")
+        title_count[title] = title_count.get(title, 0) + 1
+
+    # Identifier les titres qui apparaissent plus d'une fois
+    duplicates = {t for t, count in title_count.items() if count > 1}
+    if duplicates:
+        print(f"[INFO] {len(duplicates)} titre(s) en double detecte(s), ajout de suffixes")
+
+    # Attribuer un suffixe aux doublons
+    seen = {}
+    for tutorial in tutorials:
+        title = tutorial.get("title", "Tutoriel")
+        if title in duplicates:
+            seen[title] = seen.get(title, 0) + 1
+            if seen[title] > 1:
+                tutorial["title"] = f"{title} ({seen[title]})"
+                print(f"  [RENAME] {title} -> {tutorial['title']}")
+
+    return tutorials
+
+
 def publish_tutorials_to_zoho(tutorials):
     """
     Publie chaque tutoriel comme article Zoho Desk.
@@ -152,6 +188,7 @@ def publish_tutorials_to_zoho(tutorials):
     Args:
         tutorials: Liste de tutoriels avec contenu HTML.
     """
+    tutorials = _deduplicate_titles(tutorials)
     total = len(tutorials)
     success = 0
 
