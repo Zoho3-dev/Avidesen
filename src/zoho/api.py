@@ -22,7 +22,9 @@ def _build_zoho_headers(access_token: str, org_id: str) -> Dict[str, str]:
     }
 
 
-def create_tutorial_article(title: str, html_content: str, category: str = None, category_id: str = None) -> Optional[Dict]:
+def create_tutorial_article(
+    title: str, html_content: str, category: str = None, category_id: str = None
+) -> Optional[Dict]:
     """
     Crée un article tutoriel dans Zoho Desk.
     Rafraîchit automatiquement le token en cas de 401.
@@ -40,7 +42,7 @@ def create_tutorial_article(title: str, html_content: str, category: str = None,
         category_id = get_zoho_tutorial_category_id(category)
 
     permalink = sanitize_permalink(title)
-    
+
     body = {
         "title": title,
         "permalink": permalink,
@@ -50,22 +52,25 @@ def create_tutorial_article(title: str, html_content: str, category: str = None,
     }
 
     result = _zoho_request("POST", ZOHO_ARTICLES_URL, body, title)
-    
+
     # Si erreur de permalink, essayer avec un permalink généré par timestamp
     if result is None:
         # Réessayer avec un permalink simple basé sur le timestamp
         import time
+
         fallback_permalink = f"tutorial-{int(time.time())}"
         body["permalink"] = fallback_permalink
         print(f"[INFO] Retrying with fallback permalink: {fallback_permalink}")
         result = _zoho_request("POST", ZOHO_ARTICLES_URL, body, title)
-    
+
     return result
 
 
-def _zoho_request(method: str, url: str, body: dict, label: str = "", is_permalink_retry: bool = False) -> Optional[Dict]:
+def _zoho_request(
+    method: str, url: str, body: dict, label: str = "", is_permalink_retry: bool = False
+) -> Optional[Dict]:
     """
-    Exécute une requête Zoho avec retry automatique sur 401 (token expiré).
+    Exécute une requête Zoho sans retry automatique.
 
     Args:
         method: Méthode HTTP (GET, POST, etc.).
@@ -77,43 +82,44 @@ def _zoho_request(method: str, url: str, body: dict, label: str = "", is_permali
     Returns:
         Réponse JSON en cas de succès, None sinon.
     """
-    for attempt in range(2):
-        zoho_config = get_zoho_config()
-        headers = _build_zoho_headers(zoho_config["access_token"], zoho_config["org_id"])
+    zoho_config = get_zoho_config()
+    headers = _build_zoho_headers(zoho_config["access_token"], zoho_config["org_id"])
+    response = None
 
-        try:
-            response = requests.request(
-                method,
-                url,
-                headers=headers,
-                data=json.dumps(body),
-                timeout=30,
-            )
+    try:
+        response = requests.request(
+            method,
+            url,
+            headers=headers,
+            data=json.dumps(body),
+            timeout=30,
+        )
 
-            if response.status_code in (200, 201):
-                print(f"[OK] Article cree : {label}")
-                return response.json()
+        if response.status_code in (200, 201):
+            print(f"[OK] Article cree : {label}")
+            return response.json()
 
-            # Token expiré → rafraîchir et réessayer
-            if response.status_code == 401 and attempt == 0:
-                print("[INFO] Token expiré, rafraîchissement automatique...")
-                from src.zoho.auth import ZohoAuth
-                auth = ZohoAuth()
-                auth.get_valid_access_token()
-                continue
+        # Token expiré → arrêter sans rafraîchissement automatique
+        if response.status_code == 401:
+            print("[ERROR] Token expiré. Lancez 'py refresh_token.py' manuellement.")
+            return None
 
-            # Erreur de permalink → retry avec fallback si ce n'est pas déjà un retry
-            if (response.status_code == 422 and 
-                not is_permalink_retry and 
-                "permalink" in response.text):
-                print(f"[ERROR] Permalink invalide: {body.get('permalink', 'N/A')}")
-                return None  # Signal pour retry avec permalink fallback
+        # Erreur de permalink → retry avec fallback si ce n'est pas déjà un retry
+        if (
+            response is not None
+            and response.status_code == 422
+            and not is_permalink_retry
+            and "permalink" in response.text
+        ):
+            print(f"[ERROR] Permalink invalide: {body.get('permalink', 'N/A')}")
+            return None  # Signal pour retry avec permalink fallback
 
+        if response is not None:
             print(f"[ERROR] Zoho ({response.status_code}): {response.text[:200]}")
-            return None
+        else:
+            print("[ERROR] Zoho: Pas de réponse du serveur")
+        return None
 
-        except requests.RequestException as e:
-            print(f"[ERROR] Echec de la requete Zoho : {e}")
-            return None
-
-    return None
+    except requests.RequestException as e:
+        print(f"[ERROR] Echec de la requete Zoho : {e}")
+        return None
