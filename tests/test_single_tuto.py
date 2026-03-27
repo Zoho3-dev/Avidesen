@@ -7,10 +7,10 @@ Usage:
 """
 import sys
 import re
-sys.path.insert(0, '.')
+sys.path.insert(0, '..')
 from src.scraper.tutorial_scraper import scrape_tutorial_content
 from src.scraper.tutorial_formatter import format_tutorials_section
-from src.zoho.api import create_tutorial_article
+from src.zoho.api import create_tutorial_article_with_check
 from bs4 import BeautifulSoup
 
 
@@ -64,7 +64,7 @@ def main():
         formatted_html = format_tutorials_section([result])
         cat_label = category or "défaut"
         print(f"Catégorie: {cat_label}")
-        response = create_tutorial_article(result['title'], formatted_html, category=category)
+        response = create_tutorial_article_with_check(result['title'], formatted_html, category=category)
         if response:
             article_id = response.get('id', '?')
             print(f"\nArticle publié avec succès! ID: {article_id}")

@@ -16,7 +16,7 @@ from src.scraper.tutorial_scraper import (
     scrape_tutorial_content,
 )
 from src.scraper.tutorial_formatter import format_tutorials_section
-from src.zoho.api import create_tutorial_article
+from src.zoho.api import create_tutorial_article_with_check
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ def publish_tutorials_to_zoho(tutorials):
         print(f"\n[{idx}/{total}] {title[:60]}... [{category or '?'}]")
 
         html = format_tutorials_section([tutorial])
-        result = create_tutorial_article(title, html, category=category)
+        result = create_tutorial_article_with_check(title, html, category=category)
         if result:
             success += 1
 

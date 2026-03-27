@@ -13,6 +13,72 @@ from src.utils.text_utils import sanitize_permalink
 ZOHO_ARTICLES_URL = "https://desk.zoho.com/api/v1/articles"
 
 
+def check_article_exists(title: str = None, permalink: str = None, category_id: str = None) -> Optional[Dict]:
+    """Vérifie si un article existe déjà dans Zoho KB par titre ou permalink."""
+    if not title and not permalink:
+        return None
+    
+    zoho_config = get_zoho_config()
+    headers = _build_zoho_headers(zoho_config["access_token"], zoho_config["org_id"])
+    
+    # Récupérer TOUS les articles (avec pagination)
+    all_articles = []
+    page_from = 1
+    limit = 50
+    
+    while True:
+        url = f"{ZOHO_ARTICLES_URL}?from={page_from}&limit={limit}"
+        if category_id:
+            url += f"&categoryId={category_id}"
+        
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            if response.status_code != 200:
+                break
+            
+            data = response.json()
+            articles = data.get("data", [])
+            if not articles:
+                break
+            
+            all_articles.extend(articles)
+            
+            # Si on a reçu moins que la limite, c'est la dernière page
+            if len(articles) < limit:
+                break
+            page_from += limit
+            
+        except (requests.RequestException, KeyError):
+            break
+    
+    # Recherche par titre (insensible à la casse)
+    if title:
+        title_lower = title.lower().strip()
+        for article in all_articles:
+            article_title = article.get("title", "").lower().strip()
+            if article_title == title_lower:
+                return article
+    
+    return None
+
+
+def create_tutorial_article_with_check(
+    title: str, html_content: str, category: str = None, category_id: str = None
+) -> Optional[Dict]:
+    """Crée un article tutoriel seulement s'il n'existe pas déjà."""
+    if not category_id:
+        category_id = get_zoho_tutorial_category_id(category)
+    
+    # Vérifier si l'article existe déjà
+    existing = check_article_exists(title=title, category_id=category_id)
+    if existing:
+        print(f"[SKIP] Article existe déjà: {title} (ID: {existing.get('id')})")
+        return existing
+    
+    # Créer l'article s'il n'existe pas
+    return create_tutorial_article(title, html_content, category, category_id)
+
+
 def _build_zoho_headers(access_token: str, org_id: str) -> Dict[str, str]:
     """Construit les headers d'authentification pour l'API Zoho."""
     return {
