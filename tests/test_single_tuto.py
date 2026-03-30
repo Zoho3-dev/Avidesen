@@ -7,7 +7,8 @@ Usage:
 """
 import sys
 import re
-sys.path.insert(0, '..')
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.scraper.tutorial_scraper import scrape_tutorial_content
 from src.scraper.tutorial_formatter import format_tutorials_section
 from src.zoho.api import create_tutorial_article_with_check

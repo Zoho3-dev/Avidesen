@@ -692,9 +692,8 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                         metadata_html += '</div>'
                 in_content_zone = True
                 continue
-            # --- Skip "Référence" sections (already captured in metadata) ----------
-            if text.startswith('Référence') or text.startswith('R\u00e9f\u00e9rence'):
-                continue
+            # Les sections "Référence 123XXX" avec contenu (instructions par modèle)
+            # sont du contenu utile et sont capturées normalement dans la zone de contenu.
             # --- "Ce tutoriel est applicable pour" – capturer les produits ------
             if 'Ce tutoriel est applicable' in text[:40]:
                 if is_leaf:
