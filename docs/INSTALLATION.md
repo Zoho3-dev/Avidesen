@@ -124,7 +124,7 @@ ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID=id_domotique
 ### 5.3 Obtenir les identifiants Zoho
 
 1. **ZOHO_CLIENT_ID / ZOHO_CLIENT_SECRET** :
-   - Allez sur [api-console.zoho.eu](https://api-console.zoho.eu/)
+   - Allez sur [api-console.zoho.com](https://api-console.zoho.com/)
    - Créez un "Self Client"
    - Copiez le Client ID et Client Secret
 
@@ -253,7 +253,7 @@ L'exécutable est généré dans le dossier `dist/`. Placez `config.txt` dans le
 | Erreur 401 (token invalide) | Géré automatiquement. Si persistant : `python refresh_token.py` |
 | Erreur 422 (permalink) | Géré automatiquement avec fallback |
 | Erreur 422 (orgId/categoryId) | Vérifiez les IDs dans `config.txt` |
-| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.eu](https://api-console.zoho.eu/) |
+| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.com](https://api-console.zoho.com/) |
 
 ### Logs
 

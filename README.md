@@ -36,7 +36,10 @@ Avidesen/
     ├── config/
     │   └── settings.py           # Chargement config + mapping catégories + auto-refresh token
     ├── scraper/
-    │   ├── tutorial_scraper.py   # Scraping du site Avidsen (Elementor)
+    │   ├── styles.py            # Constantes de style (couleurs, polices, URLs)
+    │   ├── media_helpers.py     # Traitement images/vidéos (lazy loading, YouTube)
+    │   ├── html_builder.py      # Génération HTML des sections (layouts, tableaux)
+    │   ├── tutorial_scraper.py  # Scraping du site Avidsen (Elementor)
     │   └── tutorial_formatter.py # Nettoyage HTML pour Zoho Desk
     ├── utils/
     │   └── text_utils.py         # Génération de permalinks Zoho-compatible
@@ -115,7 +118,7 @@ ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID=id_categorie_domotique
 
 | Paramètre | Où le trouver |
 |---|---|
-| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | [Zoho API Console](https://api-console.zoho.eu/) → Self Client |
+| `ZOHO_CLIENT_ID` / `ZOHO_CLIENT_SECRET` | [Zoho API Console](https://api-console.zoho.com/) → Self Client |
 | `GRANTED_CODE` | Zoho API Console → Generate Code (scopes : `ZohoCRM.modules.ALL,ZohoCRM.settings.ALL,ZohoCRM.org.ALL,Desk.basic.READ,Desk.basic.CREATE,Desk.settings.ALL,Desk.articles.READ,Desk.articles.CREATE,Desk.articles.UPDATE`) |
 | `ZOHO_ORG_ID` | Zoho Desk → Paramètres → Organisation → Identificateur |
 | Catégories | Zoho Desk → Base de connaissances → Catégorie → ID dans l'URL |
@@ -179,7 +182,7 @@ avidsen.com                      Zoho Desk
 
 ## Notes techniques
 
-- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401, avec fallback sur le `GRANTED_CODE` (domaine EU : `accounts.zoho.eu`, `desk.zoho.eu`)
+- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401, avec fallback sur le `GRANTED_CODE` (domaine COM : `accounts.zoho.com`, `desk.zoho.com`)
 - Le scraping utilise les **couleurs réelles du site** (`#334956` pour les titres, `#e5e5e5` pour les fonds gris, police Poppins 15px)
 - Les images produit sont incluses **à côté du texte** dans un layout table 2 colonnes
 - Les permalinks sont **générés automatiquement** avec retry sur un permalink de fallback en cas d'erreur 422
@@ -199,5 +202,5 @@ avidsen.com                      Zoho Desk
 | Erreur 422 (orgId invalide) | Vérifiez `ZOHO_ORG_ID` dans `config.txt` |
 | Erreur 422 (categoryId invalide) | Vérifiez les IDs de catégorie dans `config.txt` |
 | `config.txt introuvable` | Copiez `config.example.txt` vers `config.txt` |
-| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.eu](https://api-console.zoho.eu/) |
+| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.com](https://api-console.zoho.com/) |
 | Tutoriel publié sans contenu | Relancez — le scraping détecte maintenant les sections non standard |

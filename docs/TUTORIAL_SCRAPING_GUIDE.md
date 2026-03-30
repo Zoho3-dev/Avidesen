@@ -179,21 +179,47 @@ tutorials_data/
 
 ## Modules Utilisés
 
-### `src/scraper/tutorial_scraper.py`
+### `src/scraper/` - Package de scraping modulaire
 
-**Fonctions principales** :
-- `get_tutorial_categories()` - Découvre les catégories
-- `scrape_tutorial_content(url)` - Extrait le HTML nettoyé
-- `get_all_tutorials_for_product(ref)` - Récupère les tutoriels d'un produit
+Le package scraper est maintenant organisé en modules spécialisés pour une meilleure maintenabilité :
 
-### `src/scraper/tutorial_formatter.py`
+#### `src/scraper/styles.py`
+**Constantes de style partagées** :
+- `SITE_HEADING_COLOR`, `SITE_ACCENT_COLOR`, `SITE_GREY_BG` - Couleurs du site
+- `SITE_FONT_FAMILY`, `SITE_FONT_SIZE` - Typographie
+- `AVIDSEN_BASE_URL` - URL de base du site
+- `INLINE_ICON_MAX_SIZE` - Seuil pour distinguer images/icônes
 
-**Fonctions principales** :
-- `format_tutorials_section(tutorials)` - Formate pour Zoho Desk
+#### `src/scraper/media_helpers.py`
+**Traitement des médias** :
+- `resolve_img_src(img)` - Résolution des URLs d'images (lazy loading)
+- `is_inline_icon(img)` - Détection des icônes inline
+- `collect_main_images(element)` - Collecte des images principales
+- `extract_youtube_html(element)` - Extraction des vidéos YouTube
+- `fix_lazy_images(soup)` - Pré-traitement des images lazy-loaded
 
-### `scrape_tutorials.py`
+#### `src/scraper/html_builder.py`
+**Génération HTML** :
+- `build_step_html()` - Construction des étapes avec layout image|texte
+- `build_content_section_html()` - Génération des sections Elementor
+- `style_content_table()` - Style des tableaux (bordures + alternance)
+- `extract_section_text()` - Extraction du texte avec icônes préservées
+- `get_unique_columns()` - Helper réutilisable pour colonnes Elementor
 
-**Script principal** qui orchestre :
+#### `src/scraper/tutorial_scraper.py`
+**Logique de scraping principale** (424 lignes, -46% par rapport à avant) :
+- `get_tutorial_categories()` - Découverte des catégories
+- `get_product_tutorials(product_ref, categories)` - Tutoriels par produit
+- `scrape_tutorial_content(url)` - Extraction complète du tutoriel
+
+#### `src/scraper/tutorial_formatter.py`
+**Nettoyage pour Zoho Desk** :
+- `format_tutorials_section(tutorials)` - Formatage final pour publication
+- `clean_tutorial_html(html_content)` - Nettoyage des éléments superflus
+
+### `main.py` et `gui.py`
+
+**Scripts principaux** qui orchestrent :
 1. Découverte des tutoriels
 2. Extraction du contenu
 3. Sauvegarde JSON

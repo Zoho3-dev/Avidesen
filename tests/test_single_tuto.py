@@ -6,7 +6,6 @@ Usage:
   python test_single_tuto.py <URL_DU_TUTO> --publish motorisation  # scrape + publish dans catégorie
 """
 import sys
-import re
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.scraper.tutorial_scraper import scrape_tutorial_content

@@ -4,6 +4,7 @@ Gère la création d'articles tutoriels dans la base de connaissances.
 """
 
 import json
+import time
 import requests
 from typing import Dict, Optional
 
@@ -122,8 +123,6 @@ def create_tutorial_article(
     # Si erreur de permalink, essayer avec un permalink généré par timestamp
     if result is None:
         # Réessayer avec un permalink simple basé sur le timestamp
-        import time
-
         fallback_permalink = f"tutorial-{int(time.time())}"
         body["permalink"] = fallback_permalink
         print(f"[INFO] Retrying with fallback permalink: {fallback_permalink}")

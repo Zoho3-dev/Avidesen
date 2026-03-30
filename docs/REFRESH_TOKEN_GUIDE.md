@@ -42,7 +42,7 @@ Le script échangera ce code contre un `REFRESH_TOKEN` (sauvegardé automatiquem
 
 ## Obtenir un GRANTED_CODE
 
-1. Allez sur [Zoho API Console EU](https://api-console.zoho.eu/)
+1. Allez sur [Zoho API Console](https://api-console.zoho.com/)
 2. Sélectionnez votre application (Self Client)
 3. Scope : `Desk.articles.ALL`
 4. Générez un code d'autorisation
