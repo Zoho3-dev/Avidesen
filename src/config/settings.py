@@ -111,6 +111,12 @@ def get_zoho_tutorial_category_id(category: str = None):
     return category_id
 
 
+def get_zoho_help_center_url():
+    """Retourne l'URL du Help Center Zoho depuis config.txt."""
+    config = load_config()
+    return config.get("ZOHO_HELP_CENTER_URL", "")
+
+
 def get_valid_access_token():
     """
     Retourne un access token valide en réutilisant le token existant s'il est encore valide,

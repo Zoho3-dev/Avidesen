@@ -164,14 +164,16 @@ Le pipeline affiche :
 DECOUVERTE DES TUTORIELS
 ============================================================
 [INFO] 5 categorie(s) a explorer
-[CATEGORY] motorisation
-  [INFO] 12 produit(s) trouve(s)
-    [OK] 3 tutoriel(s) pour ...
+[CATEGORY] securite
+  [INFO] 22 produit(s) trouve(s)
+    [OK] 1 tutoriel(s) pour Avidsen - 123281 - IPC281-Ex
+    [OK] 1 tutoriel(s) pour Thomson - 512399 - Caméra...
 ...
 [SUMMARY] 92 tutoriel(s) unique(s) decouvert(s)
 ...
-[1/92] Programmation d'un clavier... [motorisation]
-[OK] Article cree : Programmation d'un clavier...
+[1/92] Connexion caméra VISIA et AVIWATCH... [securite]
+[OK] Sous-catégorie: Avidsen - 123281 - IPC281-Ex
+[OK] Article cree : Connexion caméra VISIA et AVIWATCH...
 ```
 
 ---
@@ -251,9 +253,10 @@ L'exécutable est généré dans le dossier `dist/`. Placez `config.txt` dans le
 | Erreur | Solution |
 |---|---|
 | Erreur 401 (token invalide) | Géré automatiquement. Si persistant : `python refresh_token.py` |
-| Erreur 422 (permalink) | Géré automatiquement avec fallback |
+| Erreur 422 (permalink) | Géré automatiquement avec permalink unique par sous-catégorie |
 | Erreur 422 (orgId/categoryId) | Vérifiez les IDs dans `config.txt` |
-| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.com](https://api-console.zoho.com/) |
+| Erreur 422 (sous-catégorie dupliquée) | Normalisation automatique ; les sous-catégories existantes sont réutilisées |
+| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.eu](https://api-console.zoho.eu/) |
 
 ### Logs
 

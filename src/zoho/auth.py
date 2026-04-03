@@ -8,7 +8,7 @@ import requests
 
 from src.config.settings import load_config, save_config
 
-ZOHO_TOKEN_URL = "https://accounts.zoho.eu/oauth/v2/token"
+ZOHO_TOKEN_URL = "https://accounts.zoho.com/oauth/v2/token"
 
 
 class ZohoAuth:

@@ -9,6 +9,7 @@ import re
 from typing import List, Dict, Optional
 
 from src.config.settings import HEADERS
+from src.utils.text_utils import clean_product_name, resilient_request
 from src.scraper.styles import (
     AVIDSEN_BASE_URL,
     SITE_HEADING_COLOR,
@@ -129,8 +130,9 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
         Dictionnaire contenant le contenu du tutoriel, ou None en cas d'erreur.
     """
     try:
-        response = requests.get(tutorial_url, headers=HEADERS, timeout=30)
-        response.raise_for_status()
+        response = resilient_request(tutorial_url, headers=HEADERS, timeout=45, max_retries=3)
+        if not response:
+            return None
         soup = BeautifulSoup(response.text, 'html.parser')
         # --- 0. Pré-traitement : résoudre lazy images + supprimer <noscript> ---
         fix_lazy_images(soup)
@@ -147,10 +149,15 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             if is_leaf:
                 leaf_sections.add(id(s))
         intro_html = ''
+        applicable_html = ''
         metadata_html = ''
         video_html = ''
         content_html = ''
+        step_titles = []
+        applicable_products = []
         in_content_zone = False
+        # IDs des sections enfants du bloc metadata (à ignorer dans la zone de contenu)
+        metadata_child_ids = set()
         # Mots-clés de sections footer (à ignorer)
         FOOTER_KEYWORDS = ['Restons connectés', 'A propos d']
         # Mots-clés de contenu (activent in_content_zone si on ne l'a pas encore détecté)
@@ -216,6 +223,10 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             # --- Metadata (difficulté, temps, étapes) ---------------------------
             if 'Difficulté' in text and 'Temps nécessaire' in text:
                 # Note: can be leaf OR parent (when it has child Référence sections)
+                # Marquer toutes les sections enfants pour les ignorer dans la zone contenu
+                for child_sec in section.find_all('section', class_=True, recursive=True):
+                    if child_sec is not section:
+                        metadata_child_ids.add(id(child_sec))
                 unique_cols = get_unique_columns(section)
                 if len(unique_cols) >= 2:
                     left_col = unique_cols[0]
@@ -231,60 +242,76 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                             t = re.sub(r'(\d+)\s*(minutes|heures?)(minutes|heures?)', r'\1 \2', t)
                             t = re.sub(r'(\d+)(minutes|heures?)', r'\1 \2', t)
                             left_items.append(t)
-                    # Right column: pièces détachées / matériel
+                    # Right column: matériel nécessaire + pièces détachées
                     # Use leaf widgets only (no child widget-containers) to avoid merged text
                     right_widgets = right_col.find_all('div', class_='elementor-widget-container')
                     leaf_widgets = []
                     for w in right_widgets:
                         if not w.find('div', class_='elementor-widget-container'):
                             leaf_widgets.append(w)
-                    top_widgets = leaf_widgets
-                    pieces_heading = ''
-                    right_extra = ''
-                    ref_rows = []
-                    for w in top_widgets:
+                    # Parse right column: collect sections with their headings
+                    # Supports both "Matériel nécessaire" and "Pièces détachées nécessaires"
+                    right_sections = []  # list of {'heading': str, 'items': list}
+                    current_section = None
+                    for w in leaf_widgets:
                         wt = w.get_text(strip=True)
                         if not wt:
                             continue
-                        if 'ce(' in wt or 'détach' in wt.lower():
-                            pieces_heading = re.sub(r':(\S)', r': \1', wt)
-                        elif 'Matériel' in wt and ':' in wt:
-                            pieces_heading = re.sub(r':(\S)', r': \1', wt)
-                        elif wt.startswith('Référence') or wt.startswith('R\u00e9f'):
+                        is_heading = False
+                        if 'Matériel' in wt and ('nécessaire' in wt.lower() or ':' in wt):
+                            is_heading = True
+                        elif 'ce(' in wt or 'détach' in wt.lower():
+                            is_heading = True
+                        if is_heading:
+                            current_section = {'heading': re.sub(r':(\S)', r': \1', wt), 'items': []}
+                            right_sections.append(current_section)
+                            continue
+                        if wt.startswith('Référence') or wt.startswith('Réf'):
                             ref_text = re.sub(r':(\S)', r': \1', wt)
-                            ref_rows.append({'ref': ref_text, 'link': None})
+                            if current_section is not None:
+                                current_section['items'].append({'type': 'ref', 'text': ref_text, 'link': None})
+                            else:
+                                current_section = {'heading': '', 'items': [{'type': 'ref', 'text': ref_text, 'link': None}]}
+                                right_sections.append(current_section)
                         else:
                             a_tag = w.find('a')
-                            if a_tag and ref_rows and ref_rows[-1]['link'] is None:
-                                ref_rows[-1]['link'] = (a_tag.get_text(strip=True), a_tag.get('href', ''))
-                            elif not ref_rows and pieces_heading:
-                                right_extra += f'<div style="margin: 4px 0;">{re.sub(r":([^ ])", r": \\1", wt)}</div>'
+                            if a_tag and current_section and current_section['items']:
+                                last = current_section['items'][-1]
+                                if last['type'] == 'ref' and last.get('link') is None:
+                                    last['link'] = (a_tag.get_text(strip=True), a_tag.get('href', ''))
+                                    continue
+                            # Texte libre (ex: "Tournevis cruciforme, spatule plastique")
+                            if current_section is not None:
+                                current_section['items'].append({'type': 'text', 'text': re.sub(r':([^ ])', r': \1', wt)})
+                            # Sinon ignorer
                     # Build right column content
-                    if pieces_heading or ref_rows or right_extra:
-                        right_content = ''
-                        if pieces_heading:
+                    right_content = ''
+                    for rs in right_sections:
+                        if rs['heading']:
                             right_content += (
                                 f'<div style="font-weight: 600; color: {SITE_HEADING_COLOR}; '
-                                f'margin-bottom: 8px; font-size: 14px;">{pieces_heading}</div>'
+                                f'margin-bottom: 8px; margin-top: 10px; font-size: 14px;">{rs["heading"]}</div>'
                             )
-                        right_content += right_extra
-                        for row in ref_rows:
-                            ref_text = row['ref']
-                            if row['link']:
-                                lnk_text, lnk_href = row['link']
-                                # Ensure full URL for relative paths
-                                if lnk_href.startswith('/'):
-                                    lnk_href = f'{AVIDSEN_BASE_URL}{lnk_href}'
-                                right_content += (
-                                    f'<div style="margin: 4px 0;">'
-                                    f'<span>{ref_text}</span>'
-                                    f'&nbsp;&nbsp;&nbsp;'
-                                    f'<a href="{lnk_href}" target="_blank" rel="noopener noreferrer" '
-                                    f'style="color: {SITE_ACCENT_COLOR}; '
-                                    f'text-decoration: none;">{lnk_text}</a></div>'
-                                )
-                            else:
-                                right_content += f'<div style="margin: 4px 0;">{ref_text}</div>'
+                        for item in rs['items']:
+                            if item['type'] == 'text':
+                                right_content += f'<div style="margin: 4px 0; padding-left: 8px;">{item["text"]}</div>'
+                            elif item['type'] == 'ref':
+                                ref_text = item['text']
+                                if item.get('link'):
+                                    lnk_text, lnk_href = item['link']
+                                    if lnk_href.startswith('/'):
+                                        lnk_href = f'{AVIDSEN_BASE_URL}{lnk_href}'
+                                    right_content += (
+                                        f'<div style="margin: 4px 0;">'
+                                        f'<span>{ref_text}</span>'
+                                        f'&nbsp;&nbsp;&nbsp;'
+                                        f'<a href="{lnk_href}" target="_blank" rel="noopener noreferrer" '
+                                        f'style="color: {SITE_ACCENT_COLOR}; '
+                                        f'text-decoration: none;">{lnk_text}</a></div>'
+                                    )
+                                else:
+                                    right_content += f'<div style="margin: 4px 0;">{ref_text}</div>'
+                    if right_content:
                         left_content = ''
                         for item in left_items:
                             left_content += f'<div style="margin: 4px 0;">{item}</div>'
@@ -328,7 +355,6 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                 in_content_zone = True
                 continue
             # Les sections "Référence 123XXX" avec contenu (instructions par modèle)
-            # sont du contenu utile et sont capturées normalement dans la zone de contenu.
             # --- "Ce tutoriel est applicable pour" – capturer les produits ------
             if 'Ce tutoriel est applicable' in text[:40]:
                 if is_leaf:
@@ -336,35 +362,37 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
                     for span in section.find_all('span', class_='ae-term-item'):
                         a_tag = span.find('a')
                         if a_tag:
-                            name = a_tag.get_text(strip=True)
-                            href = a_tag.get('href', '')
-                            if href.startswith('/'):
-                                href = f'{AVIDSEN_BASE_URL}{href}'
-                            if name and href:
-                                product_items.append(
-                                    f'<a href="{href}" target="_blank" rel="noopener noreferrer" '
-                                    f'style="color: {SITE_ACCENT_COLOR}; text-decoration: none;">{name}</a>'
-                                )
-                            elif name:
-                                product_items.append(name)
-                        else:
-                            name = span.get_text(strip=True)
+                            name = clean_product_name(a_tag.get_text(strip=True))
                             if name:
                                 product_items.append(name)
+                                applicable_products.append(name)
+                        else:
+                            name = clean_product_name(span.get_text(strip=True))
+                            if name:
+                                product_items.append(name)
+                                applicable_products.append(name)
                     if not product_items:
                         raw = text.replace('Ce tutoriel est applicable pour :', '').strip()
                         if raw:
-                            product_items = [p.strip() for p in raw.split(',') if p.strip()]
+                            product_items = [clean_product_name(p.strip()) for p in raw.split(',') if p.strip()]
+                            product_items = [p for p in product_items if p]
+                            applicable_products.extend(product_items)
                     if product_items:
+                        # Produits affichés en texte simple (pas de lien WordPress)
+                        # Les liens Zoho KB seront ajoutés lors de la publication
+                        product_display = []
+                        for name in product_items:
+                            product_display.append(
+                                f'<span data-product="{name}" style="color: {SITE_ACCENT_COLOR};">{name}</span>'
+                            )
                         applicable_html = (
                             f'<div style="background: #e8f4f8; border-left: 4px solid {SITE_ACCENT_COLOR}; '
                             f'padding: 12px 16px; margin-bottom: 1.5em; border-radius: 4px; '
                             f'font-size: {SITE_FONT_SIZE}; font-family: {SITE_FONT_FAMILY};">'
                             f'<strong>Ce tutoriel est applicable pour :</strong><br/>'
-                            + ', '.join(product_items)
+                            + ', '.join(product_display)
                             + '</div>'
                         )
-                        intro_html += applicable_html
                 continue
             # --- "Les explications en vidéo" – extraire YouTube, ignorer le heading
             if 'Les explications en vid' in text[:40]:
@@ -379,24 +407,34 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             if not in_content_zone and any(text.startswith(kw) for kw in CONTENT_KEYWORDS):
                 in_content_zone = True
             # --- Zone de contenu : capturer uniquement les feuilles -------------
+            # Ignorer les sections enfants du bloc metadata (pièces détachées déjà incluses)
+            if id(section) in metadata_child_ids:
+                continue
             if in_content_zone and is_leaf:
+                # Collecter le titre de l'étape pour le sommaire
+                heading = section.find(['h3', 'h2'])
+                if heading:
+                    heading_text_for_toc = heading.get_text(strip=True)
+                    if heading_text_for_toc and any(
+                        heading_text_for_toc.startswith(kw) for kw in
+                        ['Etape ', 'Étape ', 'ETAPE ', 'étape ']
+                    ):
+                        step_titles.append(heading_text_for_toc)
                 section_html = build_content_section_html(section)
                 if section_html:
                     content_html += section_html
-        # --- 3. Assembler le HTML final -----------------------------------------
+        # --- 4. Assembler le HTML final -----------------------------------------
         html_parts = []
         if intro_html:
             html_parts.append(intro_html)
+        # Bloc "Ce tutoriel est applicable pour"
+        if applicable_html:
+            html_parts.append(applicable_html)
         if metadata_html:
             html_parts.append(metadata_html)
         if video_html:
             html_parts.append(video_html)
         if content_html:
-            html_parts.append(
-                f'<h2 style="color: {SITE_HEADING_COLOR}; font-size: 22px; '
-                f'font-family: {SITE_FONT_FAMILY}; margin: 1.5em 0 0.5em 0; '
-                f'font-weight: 600;">Les étapes du tutoriel :</h2>'
-            )
             html_parts.append(content_html)
         html_content = '\n'.join(html_parts)
         # Post-traitement : styler les tableaux de contenu (bordures + alternance)
@@ -415,10 +453,10 @@ def scrape_tutorial_content(tutorial_url: str) -> Optional[Dict]:
             'url': tutorial_url,
             'title': title,
             'html_content': html_content,
-            'steps': []
+            'steps': step_titles,
+            'applicable_products': applicable_products,
         }
         print(f"[OK] Tutoriel extrait : {title}")
         return tutorial_data
     except Exception as e:
         print(f"[ERROR] Erreur extraction {tutorial_url}: {e}")
-        return None

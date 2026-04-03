@@ -15,6 +15,9 @@ ZOHO_TUTORIAL_CATEGORY_CAMERA_ID=votre_category_id_camera
 ZOHO_TUTORIAL_CATEGORY_SOLAIRE_ID=votre_category_id_solaire
 ZOHO_TUTORIAL_CATEGORY_DOMOTIQUE_ID=votre_category_id_domotique
 
+# URL du Help Center (pour les liens produits dans les articles)
+ZOHO_HELP_CENTER_URL=https://votre-instance.zohodesk.com/portal/fr/kb
+
 # Tokens (generes automatiquement)
 # ZOHO_ACCESS_TOKEN=
 # ZOHO_REFRESH_TOKEN=

@@ -64,12 +64,10 @@ def main():
         formatted_html = format_tutorials_section([result])
         cat_label = category or "défaut"
         print(f"Catégorie: {cat_label}")
-        response = create_tutorial_article_with_check(result['title'], formatted_html, category=category)
-        if response:
-            article_id = response.get('id', '?')
-            print(f"\nArticle publié avec succès! ID: {article_id}")
-        else:
-            print("\nEchec de la publication.")
+        # Utiliser la fonction de publication simplifiée
+        from main import publish_tutorials_to_zoho
+        publish_tutorials_to_zoho([result])
+        print("\nPublication terminée (voir messages ci-dessus pour les détails)")
     else:
         print("\nAjoutez --publish pour publier dans Zoho KB:")
         print(f"  python test_single_tuto.py {url} --publish")

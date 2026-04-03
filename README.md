@@ -7,10 +7,12 @@ Outil Python qui scrape les tutoriels du site **avidsen.com** et les publie auto
 ## Fonctionnalités
 
 - **Découverte automatique** des tutoriels par catégorie (motorisation, visiophone, sécurité, solaire, domotique) et par produit
+- **Sous-catégories automatiques** : création de sous-catégories Zoho pour chaque produit (ex: "Avidsen - 123281 - IPC281-Ex")
 - **Extraction fidèle du contenu** : images produit, icônes inline, tableaux, listes, layouts 2 colonnes (image | texte)
 - **Scraping haute fidélité** : couleurs, polices (Poppins), fonds gris, tailles de police identiques au site original
-- **Publication par catégorie** : chaque tutoriel est publié dans sa catégorie Zoho correspondante (Portail, Visiophone, Caméra, Solaire, Domotique)
-- **Dédoublonnage** : les tutoriels ne sont jamais publiés en double
+- **Dédoublonnage intelligent** : par (url, produit) pour gérer les tutoriels partagés entre plusieurs produits
+- **Cache de contenu** : scraping optimisé par URL pour éviter les requêtes redondantes
+- **Publication par catégorie** : chaque tutoriel est publié dans sa sous-catégorie produit Zoho correspondante
 - **Nettoyage HTML** : suppression du sommaire, navigation, scripts — conservation du contenu utile
 - **Publication automatique** via l'API Zoho Desk (OAuth 2.0)
 - **Rafraîchissement automatique du token** avec fallback sur le granted_code
@@ -31,7 +33,9 @@ Avidesen/
 ├── docs/
 │   ├── REFRESH_TOKEN_GUIDE.md    # Guide d'authentification OAuth
 │   ├── TUTORIAL_CATEGORY_CONFIG.md # Configuration des catégories
-│   └── TUTORIAL_SCRAPING_GUIDE.md  # Guide technique du scraping
+│   ├── TUTORIAL_SCRAPING_GUIDE.md  # Guide technique du scraping
+│   ├── CATEGORY_STRUCTURE.md     # Structure des catégories et sous-catégories
+│   └── INSTALLATION.md           # Guide d'installation complet
 └── src/
     ├── config/
     │   └── settings.py           # Chargement config + mapping catégories + auto-refresh token
@@ -138,10 +142,11 @@ python main.py
 ```
 
 Le pipeline s'exécute automatiquement :
-1. **Découverte** des tutoriels sur avidsen.com (5 catégories)
-2. **Extraction** du contenu HTML fidèle au site (images, couleurs, polices)
-3. **Sauvegarde** locale dans `tutorials_data/all_tutorials.json`
-4. **Publication** dans Zoho Desk par catégorie (token rafraîchi automatiquement)
+1. **Découverte** des tutoriels sur avidsen.com (5 catégories + produits)
+2. **Déduplication** par (url, produit) pour gérer les tutoriels partagés
+3. **Extraction** du contenu HTML fidèle au site (images, couleurs, polices, sections matériel/pièces)
+4. **Sauvegarde** locale dans `tutorials_data/all_tutorials.json`
+5. **Publication** dans Zoho Desk avec création automatique des sous-catégories par produit
 
 ### Option 2 : Interface graphique
 
@@ -167,14 +172,19 @@ avidsen.com                      Zoho Desk
     │                                 ▲
     ▼                                 │
 ┌──────────────┐   ┌──────────┐   ┌──────────────────┐
-│  Découverte  │──▶│Extraction│──▶│   Publication     │
-│  5 catégories│   │  contenu │   │   par catégorie   │
-│  + produits  │   │  HTML    │   │   (auto-token)    │
+│  Découverte  │──▶│Dédupli-   │──▶│   Publication     │
+│  5 catégories│   │cation +   │   │   avec sous-cat. │
+│  + produits  │   │Extraction│   │   par produit    │
+│  (url,prod)  │   │  contenu │   │   (auto-token)    │
 └──────────────┘   └────┬─────┘   └──────────────────┘
                         │          motorisation → Portail
-                        ▼          visiophone → Visiophone
-                 tutorials_data/   securite → Caméra
-                 all_tutorials.json solaire → Solaire
+                        ▼          → "Avidsen - 123281"
+                 tutorials_data/   visiophone → Visiophone
+                 all_tutorials.json   → "Philips - 531001"
+                                   securite → Caméra
+                                   → "Avidsen - IPC281"
+                                   solaire → Solaire
+                                   → "Avidsen - Soria 400W"
                                    domotique → Domotique
 ```
 
@@ -182,11 +192,12 @@ avidsen.com                      Zoho Desk
 
 ## Notes techniques
 
-- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401, avec fallback sur le `GRANTED_CODE` (domaine COM : `accounts.zoho.com`, `desk.zoho.com`)
+- Le token est **rafraîchi automatiquement** avant chaque appel API et en cas d'erreur 401, avec fallback sur le `GRANTED_CODE` (domaine EU : `accounts.zoho.eu`, `desk.zoho.eu`)
+- **Sous-catégories automatiques** : création de sous-catégories Zoho pour chaque produit avec noms normalisés
+- **Déduplication par (url, produit)** : un même tutoriel partagé par plusieurs produits crée une sous-catégorie pour chacun
+- **Cache de contenu par URL** : optimisation du scraping pour éviter les requêtes redondantes
 - Le scraping utilise les **couleurs réelles du site** (`#334956` pour les titres, `#e5e5e5` pour les fonds gris, police Poppins 15px)
-- Les images produit sont incluses **à côté du texte** dans un layout table 2 colonnes
-- Les permalinks sont **générés automatiquement** avec retry sur un permalink de fallback en cas d'erreur 422
-- Les tutoriels sont **dédoublonnés** par URL lors de la découverte
+- Les permalinks incluent **l'ID de sous-catégorie** pour garantir l'unicité quand le même tutoriel est publié dans plusieurs sous-catégories
 - Les tutoriels sont **sauvegardés localement** en JSON avant publication
 - Le fichier `config.txt` n'est **jamais versionné** (contient des secrets)
 
@@ -198,9 +209,11 @@ avidsen.com                      Zoho Desk
 |---|---|
 | `ZOHO_ACCESS_TOKEN manquant` | Lancez `python refresh_token.py` |
 | Erreur 401 (token invalide) | Géré automatiquement ; sinon `python refresh_token.py` |
-| Erreur 422 (permalink) | Géré automatiquement avec un permalink de fallback |
+| Erreur 422 (permalink) | Géré automatiquement avec un permalink unique par sous-catégorie |
 | Erreur 422 (orgId invalide) | Vérifiez `ZOHO_ORG_ID` dans `config.txt` |
 | Erreur 422 (categoryId invalide) | Vérifiez les IDs de catégorie dans `config.txt` |
+| Erreur 422 (sous-catégorie dupliquée) | Normalisation des noms automatique ; les sous-catégories existantes sont réutilisées |
 | `config.txt introuvable` | Copiez `config.example.txt` vers `config.txt` |
-| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.com](https://api-console.zoho.com/) |
+| `GRANTED_CODE invalide` | Générez un nouveau code sur [api-console.zoho.eu](https://api-console.zoho.eu/) |
 | Tutoriel publié sans contenu | Relancez — le scraping détecte maintenant les sections non standard |
+| Pièces détachées sans lien | Le lien est inclus seulement si présent sur le site source |
